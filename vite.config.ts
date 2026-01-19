@@ -5,9 +5,17 @@ import viteReact from '@vitejs/plugin-react'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
+import { pigment } from '@pigment-css/vite-plugin'
+import { createTheme } from '@mui/material'
 
 const config = defineConfig({
   plugins: [
+    pigment({
+      transformLibraries: ['@mui/material'],
+      theme: createTheme({
+        cssVariables: true,
+      }),
+    }),
     devtools(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     // this is the plugin that enables path aliases
