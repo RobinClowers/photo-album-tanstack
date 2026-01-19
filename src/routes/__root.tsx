@@ -2,11 +2,9 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
-import '@pigment-css/react/styles.css';
+import '@pigment-css/react/styles.css'
 
-import Header from '../components/Header'
-
-import appCss from '../styles.css?url'
+import { Header } from '@/components/Header'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -25,7 +23,11 @@ export const Route = createRootRoute({
     links: [
       {
         rel: 'stylesheet',
-        href: appCss,
+        href: 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
+      },
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/icon?family=Material+Icons',
       },
     ],
   }),
