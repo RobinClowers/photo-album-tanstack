@@ -12,7 +12,14 @@
 	"main": "@tanstack/react-start/server-entry",
 	"observability": {
 		"enabled": true
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "photo_album",
+			"database_name": "photo-album",
+			"database_id": "a4770c33-29a8-46c4-8b79-f9de04296754"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
