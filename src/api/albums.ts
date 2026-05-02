@@ -1,28 +1,28 @@
 import { createServerFn } from '@tanstack/react-start'
 import { createDB } from '@/db'
-import { getAlbumsWithPhotoCount, getPhotosWithAlbum } from '@/db/queries'
+import { getAlbumsWithCoverPhoto, getPhotosWithAlbum } from '@/db/queries'
+import { env } from 'cloudflare:workers'
 
 export const getAllAlbums = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const env = process.env as any
   const db = createDB(env.photo_album)
-  return await getAlbumsWithPhotoCount(db)
+  return await getAlbumsWithCoverPhoto(db)
 })
 
 export const getAllPhotos = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const env = process.env as any
   const db = createDB(env.photo_album)
   return await getPhotosWithAlbum(db)
 })
 
 export const getPhotosByAlbumId = createServerFn({
   method: 'GET',
-}).handler(async (ctx: any) => {
-  const env = process.env as any
-  const db = createDB(env.photo_album)
-  const albumId = Number(ctx.data?.albumId) || 0
-  return await getPhotosWithAlbum(db, albumId)
 })
+  .inputValidator((data: { albumId: string }) => data)
+  .handler(async ({ data }) => {
+    const db = createDB(env.photo_album)
+    const albumId = Number(data.albumId) || 0
+    return await getPhotosWithAlbum(db, albumId)
+  })

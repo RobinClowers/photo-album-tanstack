@@ -1,58 +1,21 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import {
-  Container,
-  Typography,
-  Box,
-  Card,
-  CardMedia,
-  CardContent,
-} from '@mui/material'
+import { Container, Typography, Box, Card, CardMedia, CardContent } from '@mui/material'
 
-interface Album {
-  id: string
-  slug: string
-  title: string
-  description?: string
-  cover_photo?: {
-    url: string
-    width: number
-    height: number
-  }
-  photo_count: number
-}
+import { getAllAlbums } from '@/api/albums'
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
   loader: async () => {
-    // Mock data for now - replace with actual API call
-    const albums: Album[] = [
-      {
-        id: '1',
-        slug: 'japan-2024',
-        title: 'Japan 2024',
-        description: 'Cherry blossoms and temples',
-        cover_photo: {
-          url: 'https://picsum.photos/400/300?random=1',
-          width: 400,
-          height: 300,
-        },
-        photo_count: 156,
-      },
-      {
-        id: '2',
-        slug: 'iceland-adventure',
-        title: 'Iceland Adventure',
-        description: 'Northern lights and glaciers',
-        cover_photo: {
-          url: 'https://picsum.photos/400/300?random=2',
-          width: 400,
-          height: 300,
-        },
-        photo_count: 89,
-      },
-    ]
+    const albums = await getAllAlbums()
 
-    return { albums }
+    return {
+      albums: albums.map((album) => ({
+        id: String(album.id),
+        slug: album.slug || '',
+        title: album.title || '',
+        cover_photo: album.coverPhoto,
+      })),
+    }
   },
 })
 
@@ -101,7 +64,7 @@ function IndexPage() {
                 <CardMedia
                   component="img"
                   height="200"
-                  image={album.cover_photo.url}
+                  image={album.cover_photo.path}
                   alt={album.title}
                   sx={{ objectFit: 'cover' }}
                 />
@@ -109,18 +72,6 @@ function IndexPage() {
               <CardContent>
                 <Typography variant="h6" component="h2" gutterBottom>
                   {album.title}
-                </Typography>
-                {album.description && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="p"
-                  >
-                    {album.description}
-                  </Typography>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  {album.photo_count} photos
                 </Typography>
               </CardContent>
             </Card>

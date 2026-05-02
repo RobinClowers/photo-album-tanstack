@@ -1,9 +1,46 @@
-import { eq, desc, sql } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { type DB } from './index'
-import { albums, photos, type Album, type Photo, type NewAlbum, type NewPhoto } from './schema'
+import {
+  albums,
+  photos,
+  type Album,
+  type Photo,
+  type NewAlbum,
+  type NewPhoto,
+} from './schema'
 
-export async function getAlbums(db: DB): Promise<Album[]> {
-  return await db.select().from(albums).orderBy(desc(albums.createdAt))
+export async function getAlbumsWithCoverPhoto(db: DB): Promise<
+  (Album & {
+    coverPhoto: Pick<
+      Photo,
+      'id' | 'filename' | 'path' | 'width' | 'height' | 'mimeType'
+    > | null
+  })[]
+> {
+  const result = await db
+    .select({
+      id: albums.id,
+      title: albums.title,
+      coverPhotoId: albums.coverPhotoId,
+      createdAt: albums.createdAt,
+      updatedAt: albums.updatedAt,
+      slug: albums.slug,
+      publishedAt: albums.publishedAt,
+      firstPhotoTakenAt: albums.firstPhotoTakenAt,
+      coverPhoto: {
+        id: photos.id,
+        filename: photos.filename,
+        path: photos.path,
+        width: photos.width,
+        height: photos.height,
+        mimeType: photos.mimeType,
+      },
+    })
+    .from(albums)
+    .leftJoin(photos, eq(albums.coverPhotoId, photos.id))
+    .orderBy(desc(albums.createdAt))
+
+  return result as any
 }
 
 export async function getAlbum(db: DB, id: number): Promise<Album | undefined> {
@@ -11,7 +48,10 @@ export async function getAlbum(db: DB, id: number): Promise<Album | undefined> {
   return album
 }
 
-export async function getAlbumBySlug(db: DB, slug: string): Promise<Album | undefined> {
+export async function getAlbumBySlug(
+  db: DB,
+  slug: string,
+): Promise<Album | undefined> {
   const [album] = await db.select().from(albums).where(eq(albums.slug, slug))
   return album
 }
@@ -21,7 +61,11 @@ export async function createAlbum(db: DB, data: NewAlbum): Promise<Album> {
   return album
 }
 
-export async function updateAlbum(db: DB, id: number, data: Partial<NewAlbum>): Promise<Album | undefined> {
+export async function updateAlbum(
+  db: DB,
+  id: number,
+  data: Partial<NewAlbum>,
+): Promise<Album | undefined> {
   const [album] = await db
     .update(albums)
     .set({ ...data, updatedAt: new Date().toISOString() })
@@ -55,7 +99,11 @@ export async function createPhoto(db: DB, data: NewPhoto): Promise<Photo> {
   return photo
 }
 
-export async function updatePhoto(db: DB, id: number, data: Partial<NewPhoto>): Promise<Photo | undefined> {
+export async function updatePhoto(
+  db: DB,
+  id: number,
+  data: Partial<NewPhoto>,
+): Promise<Photo | undefined> {
   const [photo] = await db
     .update(photos)
     .set({ ...data, updatedAt: new Date().toISOString() })
@@ -68,28 +116,10 @@ export async function deletePhoto(db: DB, id: number): Promise<void> {
   await db.delete(photos).where(eq(photos.id, id))
 }
 
-export async function getAlbumsWithPhotoCount(db: DB): Promise<(Album & { photoCount: number })[]> {
-  const result = await db
-    .select({
-      id: albums.id,
-      title: albums.title,
-      coverPhotoId: albums.coverPhotoId,
-      createdAt: albums.createdAt,
-      updatedAt: albums.updatedAt,
-      slug: albums.slug,
-      publishedAt: albums.publishedAt,
-      firstPhotoTakenAt: albums.firstPhotoTakenAt,
-      photoCount: sql<number>`count(${photos.id})`,
-    })
-    .from(albums)
-    .leftJoin(photos, eq(albums.id, photos.albumId))
-    .groupBy(albums.id)
-    .orderBy(desc(albums.createdAt))
-
-  return result as (Album & { photoCount: number })[]
-}
-
-export async function getPhotosWithAlbum(db: DB, albumId?: number): Promise<(Photo & { album: Album | null })[]> {
+export async function getPhotosWithAlbum(
+  db: DB,
+  albumId?: number,
+): Promise<(Photo & { album: Album | null })[]> {
   const query = db
     .select({
       id: photos.id,
@@ -124,3 +154,4 @@ export async function getPhotosWithAlbum(db: DB, albumId?: number): Promise<(Pho
 
   return await query
 }
+
