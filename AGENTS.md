@@ -7,18 +7,18 @@ This document provides essential guidelines for agentic coding agents working in
 ### Core Development
 
 ```bash
-npm run dev          # Start development server on port 3000
-npm run build        # Production build
-npm run serve        # Preview production build
-npm run preview      # Build and preview
-npm run deploy       # Build and deploy to Cloudflare Workers
+bun run dev          # Start development server on port 3000
+bun run build        # Production build
+bun run serve        # Preview production build
+bun run preview      # Build and preview
+bun run deploy       # Build and deploy to Cloudflare Workers
 ```
 
 ### Testing
 
 ```bash
-npm test             # Run all tests
-npm run test         # Alternative test command
+bun test             # Run all tests
+bun run test         # Alternative test command
 ```
 
 _Note: Testing infrastructure exists with Vitest + Testing Library, but no test files exist yet._
@@ -26,7 +26,7 @@ _Note: Testing infrastructure exists with Vitest + Testing Library, but no test 
 ### Additional Commands
 
 ```bash
-npm run cf-typegen   # Generate Cloudflare Workers types
+bun run cf-typegen   # Generate Cloudflare Workers types
 ```
 
 ## Architecture Overview

@@ -9,7 +9,11 @@
     "test": "vitest run",
     "deploy": "bun run build && wrangler deploy",
     "preview": "bun run build && vite preview",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply photo-album --remote",
+    "db:local": "wrangler d1 migrations apply photo-album --local",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.13.8",
@@ -24,6 +28,8 @@
     "@tanstack/react-router-ssr-query": "^1.131.7",
     "@tanstack/react-start": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.0.6",
