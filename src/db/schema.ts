@@ -5,6 +5,7 @@ import {
   real,
   index,
 } from 'drizzle-orm/sqlite-core'
+import { relations } from 'drizzle-orm'
 
 export const albums = sqliteTable(
   'albums',
@@ -180,4 +181,27 @@ export type PlusOne = typeof plusOnes.$inferSelect
 export type NewPlusOne = typeof plusOnes.$inferInsert
 export type Redirect = typeof redirects.$inferSelect
 export type NewRedirect = typeof redirects.$inferInsert
+
+export const albumsRelations = relations(albums, ({ one, many }) => ({
+  cover_photo: one(photos, {
+    fields: [albums.coverPhotoId],
+    references: [photos.id],
+  }),
+  photos: many(photos),
+}))
+
+export const photosRelations = relations(photos, ({ one, many }) => ({
+  album: one(albums, {
+    fields: [photos.albumId],
+    references: [albums.id],
+  }),
+  versions: many(photoVersions),
+}))
+
+export const photoVersionsRelations = relations(photoVersions, ({ one }) => ({
+  photo: one(photos, {
+    fields: [photoVersions.photoId],
+    references: [photos.id],
+  }),
+}))
 

@@ -125,6 +125,8 @@ function AlbumPage() {
 
 ### TypeScript Guidelines
 
+- **Never use `any` type**: Always define or import appropriate interfaces/types instead of using `any`.
+
 #### Interface Definitions
 
 ```typescript

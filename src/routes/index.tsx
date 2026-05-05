@@ -1,7 +1,30 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { Container, Typography, Box, Card, CardMedia, CardContent } from '@mui/material'
+import {
+  Container,
+  Typography,
+  Box,
+  Card,
+  CardMedia,
+  CardContent,
+} from '@mui/material'
 
 import { getAllAlbums } from '@/api/albums'
+import type { Photo, PhotoVersion } from '@/db/schema'
+
+const BASE_PHOTO_PATH = 'https://s3.amazonaws.com/robin-photos/'
+
+export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
+
+export function buildPhotoPath(
+  photo: PhotoWithVersions | null | undefined,
+  size: string,
+) {
+  if (!photo?.versions?.length) return ''
+  const version =
+    photo.versions.find((v) => v.size === size) || photo.versions[0]
+  if (!version) return ''
+  return `${BASE_PHOTO_PATH}${photo.path}/${size}/${version.filename}`
+}
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
@@ -13,7 +36,7 @@ export const Route = createFileRoute('/')({
         id: String(album.id),
         slug: album.slug || '',
         title: album.title || '',
-        cover_photo: album.coverPhoto,
+        cover_photo: album.cover_photo,
       })),
     }
   },
@@ -64,7 +87,7 @@ function IndexPage() {
                 <CardMedia
                   component="img"
                   height="200"
-                  image={album.cover_photo.path}
+                  image={buildPhotoPath(album.cover_photo, 'mobile_sm')}
                   alt={album.title}
                   sx={{ objectFit: 'cover' }}
                 />

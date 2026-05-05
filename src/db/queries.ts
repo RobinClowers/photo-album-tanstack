@@ -9,38 +9,17 @@ import {
   type NewPhoto,
 } from './schema'
 
-export async function getAlbumsWithCoverPhoto(db: DB): Promise<
-  (Album & {
-    coverPhoto: Pick<
-      Photo,
-      'id' | 'filename' | 'path' | 'width' | 'height' | 'mimeType'
-    > | null
-  })[]
-> {
-  const result = await db
-    .select({
-      id: albums.id,
-      title: albums.title,
-      coverPhotoId: albums.coverPhotoId,
-      createdAt: albums.createdAt,
-      updatedAt: albums.updatedAt,
-      slug: albums.slug,
-      publishedAt: albums.publishedAt,
-      firstPhotoTakenAt: albums.firstPhotoTakenAt,
-      coverPhoto: {
-        id: photos.id,
-        filename: photos.filename,
-        path: photos.path,
-        width: photos.width,
-        height: photos.height,
-        mimeType: photos.mimeType,
+export async function getAlbumsWithCoverPhoto(db: DB) {
+  return db.query.albums.findMany({
+    with: {
+      cover_photo: {
+        with: {
+          versions: true,
+        },
       },
-    })
-    .from(albums)
-    .leftJoin(photos, eq(albums.coverPhotoId, photos.id))
-    .orderBy(desc(albums.createdAt))
-
-  return result as any
+    },
+    orderBy: albums.createdAt,
+  })
 }
 
 export async function getAlbum(db: DB, id: number): Promise<Album | undefined> {
@@ -154,4 +133,3 @@ export async function getPhotosWithAlbum(
 
   return await query
 }
-
