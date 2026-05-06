@@ -1,12 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import {
-  Container,
-  Typography,
-  Box,
-  Card,
-  CardMedia,
-  CardContent,
-} from '@mui/material'
+import { Container, Typography, Box, Card, CardMedia } from '@mui/material'
 
 import { getAllAlbums } from '@/api/albums'
 import type { Photo, PhotoVersion } from '@/db/schema'
@@ -72,6 +65,7 @@ function IndexPage() {
               slug: album.slug,
             }}
             key={album.id}
+            style={{ textDecoration: 'none' }}
           >
             <Card
               sx={{
@@ -92,11 +86,14 @@ function IndexPage() {
                   sx={{ objectFit: 'cover' }}
                 />
               )}
-              <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {album.title}
-                </Typography>
-              </CardContent>
+              <Typography
+                variant="h6"
+                component="h2"
+                sx={{ my: 1 }}
+                align="center"
+              >
+                {album.title}
+              </Typography>
             </Card>
           </Link>
         ))}
