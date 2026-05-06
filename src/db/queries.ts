@@ -35,6 +35,25 @@ export async function getAlbumBySlug(
   return album
 }
 
+export async function getAlbumDetails(db: DB, slug: string) {
+  return db.query.albums.findFirst({
+    where: eq(albums.slug, slug),
+    with: {
+      cover_photo: {
+        with: {
+          versions: true,
+        },
+      },
+      photos: {
+        with: {
+          versions: true,
+        },
+        orderBy: (photos, { desc }) => [desc(photos.takenAt)],
+      },
+    },
+  })
+}
+
 export async function createAlbum(db: DB, data: NewAlbum): Promise<Album> {
   const [album] = await db.insert(albums).values(data).returning()
   return album

@@ -2,22 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { Container, Typography, Box, Card, CardMedia } from '@mui/material'
 
 import { getAllAlbums } from '@/api/albums'
-import type { Photo, PhotoVersion } from '@/db/schema'
-
-const BASE_PHOTO_PATH = 'https://s3.amazonaws.com/robin-photos/'
-
-export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
-
-export function buildPhotoPath(
-  photo: PhotoWithVersions | null | undefined,
-  size: string,
-) {
-  if (!photo?.versions?.length) return ''
-  const version =
-    photo.versions.find((v) => v.size === size) || photo.versions[0]
-  if (!version) return ''
-  return `${BASE_PHOTO_PATH}${photo.path}/${size}/${version.filename}`
-}
+import { buildPhotoPath } from '@/utils/photo'
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
