@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, isNotNull } from 'drizzle-orm'
 import { type DB } from './index'
 import {
   albums,
@@ -18,6 +18,7 @@ export async function getAlbumsWithCoverPhoto(db: DB) {
         },
       },
     },
+    where: isNotNull(albums.publishedAt),
     orderBy: [desc(albums.firstPhotoTakenAt)],
   })
 }
