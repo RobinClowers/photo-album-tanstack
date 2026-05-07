@@ -17,6 +17,11 @@ export default function PhotoGridItem({ photo }: PhotoGridItemProps) {
     <Box
       sx={{
         height: { xs: 150, sm: 200, md: 250 },
+        width: {
+          xs: 150 * aspectRatio,
+          sm: 200 * aspectRatio,
+          md: 250 * aspectRatio,
+        },
         flexGrow: aspectRatio,
         position: 'relative',
         overflow: 'hidden',
