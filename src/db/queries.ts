@@ -18,7 +18,7 @@ export async function getAlbumsWithCoverPhoto(db: DB) {
         },
       },
     },
-    orderBy: albums.createdAt,
+    orderBy: [desc(albums.firstPhotoTakenAt)],
   })
 }
 
