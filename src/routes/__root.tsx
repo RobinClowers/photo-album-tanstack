@@ -5,6 +5,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import '@pigment-css/react/styles.css'
 
 import { Header } from '@/components/Header'
+import { CssBaseline } from '@mui/material'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -43,6 +44,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Header />
+        <CssBaseline />
         {children}
         <TanStackDevtools
           config={{
