@@ -25,15 +25,6 @@ function IndexPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ pb: 2 }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Travel Photos
-        </Typography>
-        <Typography variant="body1" color="text.secondary" component="p">
-          Travel photos from all over the world by Robin Clowers.
-        </Typography>
-      </Box>
-
       <Box
         sx={{
           display: 'grid',
