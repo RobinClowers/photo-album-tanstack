@@ -25,21 +25,20 @@ function IndexPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom>
-        Travel Photos
-      </Typography>
-      <Typography variant="body1" color="text.secondary" component="p">
-        Travel photos from all over the world by Robin Clowers.
-      </Typography>
+      <Box sx={{ pb: 2 }}>
+        <Typography variant="h3" component="h1" gutterBottom>
+          Travel Photos
+        </Typography>
+        <Typography variant="body1" color="text.secondary" component="p">
+          Travel photos from all over the world by Robin Clowers.
+        </Typography>
+      </Box>
 
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-          },
+          gridTemplateColumns: 'repeat(auto-fit, 240px)',
+          justifyContent: 'space-between',
           gap: 3,
         }}
       >
@@ -65,7 +64,8 @@ function IndexPage() {
               {album.cover_photo && (
                 <CardMedia
                   component="img"
-                  height="200"
+                  height="180"
+                  width="240"
                   image={buildPhotoPath(album.cover_photo, 'mobile_sm')}
                   alt={album.title}
                   sx={{ objectFit: 'cover' }}
@@ -74,7 +74,7 @@ function IndexPage() {
               <Typography
                 variant="h6"
                 component="h2"
-                sx={{ my: 1 }}
+                sx={{ my: 1, fontWeight: 400 }}
                 align="center"
               >
                 {album.title}
