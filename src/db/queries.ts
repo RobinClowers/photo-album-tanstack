@@ -49,7 +49,7 @@ export async function getAlbumDetails(db: DB, slug: string) {
         with: {
           versions: true,
         },
-        orderBy: (photos, { desc }) => [desc(photos.takenAt)],
+        orderBy: (photos) => [photos.takenAt],
       },
     },
   })
