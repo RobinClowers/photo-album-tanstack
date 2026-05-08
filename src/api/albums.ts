@@ -39,3 +39,13 @@ export const getAlbumDetails = createServerFn({
     const db = createDB(env.photo_album)
     return await getAlbumDetailsQuery(db, data.slug)
   })
+
+export const getPhotoDetailsFn = createServerFn({
+  method: 'GET',
+})
+  .inputValidator((data: { slug: string; filename: string }) => data)
+  .handler(async ({ data }) => {
+    const db = createDB(env.photo_album)
+    const { getPhotoBySlugAndFilename } = await import('@/db/queries')
+    return await getPhotoBySlugAndFilename(db, data.slug, data.filename)
+  })

@@ -4,9 +4,10 @@ import type { PhotoWithVersions } from '@/utils/photo'
 
 interface PhotoGridProps {
   photos: PhotoWithVersions[]
+  albumSlug: string
 }
 
-export default function PhotoGrid({ photos }: PhotoGridProps) {
+export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
   return (
     <Box
       sx={{
@@ -20,7 +21,7 @@ export default function PhotoGrid({ photos }: PhotoGridProps) {
       }}
     >
       {photos.map((photo) => (
-        <PhotoGridItem key={photo.id} photo={photo} />
+        <PhotoGridItem key={photo.id} photo={photo} albumSlug={albumSlug} />
       ))}
     </Box>
   )

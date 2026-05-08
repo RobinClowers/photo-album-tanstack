@@ -55,6 +55,45 @@ export async function getAlbumDetails(db: DB, slug: string) {
   })
 }
 
+export async function getPhotoBySlugAndFilename(
+  db: DB,
+  slug: string,
+  filename: string,
+) {
+  const album = await getAlbumBySlug(db, slug)
+  if (!album) return null
+
+  const photo = await db.query.photos.findFirst({
+    where: (photos, { and, eq }) =>
+      and(eq(photos.albumId, album.id), eq(photos.filename, filename)),
+    with: {
+      album: true,
+      versions: true,
+    },
+  })
+
+  if (!photo) return null
+
+  const allPhotos = await db.query.photos.findMany({
+    where: eq(photos.albumId, album.id),
+    orderBy: (photos, { desc }) => [desc(photos.takenAt)],
+    columns: { filename: true },
+  })
+
+  const currentIndex = allPhotos.findIndex((p) => p.filename === filename)
+  let previousPhotoFilename = null
+  let nextPhotoFilename = null
+
+  if (currentIndex > 0) {
+    previousPhotoFilename = allPhotos[currentIndex - 1].filename
+  }
+  if (currentIndex !== -1 && currentIndex < allPhotos.length - 1) {
+    nextPhotoFilename = allPhotos[currentIndex + 1].filename
+  }
+
+  return { photo, previousPhotoFilename, nextPhotoFilename }
+}
+
 export async function createAlbum(db: DB, data: NewAlbum): Promise<Album> {
   const [album] = await db.insert(albums).values(data).returning()
   return album

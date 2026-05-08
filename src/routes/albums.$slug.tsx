@@ -39,7 +39,7 @@ function AlbumPage() {
         {album.title}
       </Typography>
 
-      <PhotoGrid photos={album.photos} />
+      <PhotoGrid photos={album.photos} albumSlug={album.slug || ''} />
     </Container>
   )
 }

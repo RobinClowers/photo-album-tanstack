@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlbumsSlugRouteImport } from './routes/albums.$slug'
+import { Route as AlbumsSlugFilenameRouteImport } from './routes/albums.$slug_.$filename'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const AlbumsSlugRoute = AlbumsSlugRouteImport.update({
   path: '/albums/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlbumsSlugFilenameRoute = AlbumsSlugFilenameRouteImport.update({
+  id: '/albums/$slug_/$filename',
+  path: '/albums/$slug/$filename',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/albums/$slug_/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/albums/$slug'
+  fullPaths: '/' | '/albums/$slug' | '/albums/$slug/$filename'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/albums/$slug'
-  id: '__root__' | '/' | '/albums/$slug'
+  to: '/' | '/albums/$slug' | '/albums/$slug/$filename'
+  id: '__root__' | '/' | '/albums/$slug' | '/albums/$slug_/$filename'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlbumsSlugRoute: typeof AlbumsSlugRoute
+  AlbumsSlugFilenameRoute: typeof AlbumsSlugFilenameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlbumsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/albums/$slug_/$filename': {
+      id: '/albums/$slug_/$filename'
+      path: '/albums/$slug/$filename'
+      fullPath: '/albums/$slug/$filename'
+      preLoaderRoute: typeof AlbumsSlugFilenameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlbumsSlugRoute: AlbumsSlugRoute,
+  AlbumsSlugFilenameRoute: AlbumsSlugFilenameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
