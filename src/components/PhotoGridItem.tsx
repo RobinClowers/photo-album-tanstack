@@ -4,43 +4,40 @@ import { buildPhotoPath, type PhotoWithVersions } from '@/utils/photo'
 
 interface PhotoGridItemProps {
   photo: PhotoWithVersions
+  dimensions: {
+    top: number
+    left: number
+    width: number
+    height: number
+  }
   albumSlug: string
 }
 
 export default function PhotoGridItem({
   photo,
+  dimensions,
   albumSlug,
 }: PhotoGridItemProps) {
-  const originalVersion =
-    photo.versions.find((v) => v.size === 'original') || photo.versions[0]
-
-  const width = originalVersion?.width || 1
-  const height = originalVersion?.height || 1
-  const aspectRatio = width / height
-
   return (
-    <Link
-      to="/albums/$slug/$filename"
-      params={{ slug: albumSlug, filename: photo.filename || '' }}
-      style={{ display: 'block', textDecoration: 'none' }}
+    <Box
+      sx={{
+        position: 'absolute',
+        top: dimensions.top,
+        left: dimensions.left,
+        width: dimensions.width,
+        height: dimensions.height,
+        overflow: 'hidden',
+        borderRadius: 1,
+      }}
     >
-      <Box
-        sx={{
-          height: { xs: 150, sm: 200, md: 250 },
-          width: {
-            xs: 150 * aspectRatio,
-            sm: 200 * aspectRatio,
-            md: 250 * aspectRatio,
-          },
-          flexGrow: aspectRatio,
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 1,
-        }}
+      <Link
+        to="/albums/$slug/$filename"
+        params={{ slug: albumSlug, filename: photo.filename || '' }}
+        style={{ display: 'block', width: '100%', height: '100%' }}
       >
         <Box
           component="img"
-          src={buildPhotoPath(photo, 'tablet')} // Using 'tablet' or 'mobile_sm' based on reasonable resolution
+          src={buildPhotoPath(photo, 'tablet')}
           alt={photo.caption || ''}
           sx={{
             width: '100%',
@@ -66,7 +63,7 @@ export default function PhotoGridItem({
             </Typography>
           </Box>
         )}
-      </Box>
-    </Link>
+      </Link>
+    </Box>
   )
 }
