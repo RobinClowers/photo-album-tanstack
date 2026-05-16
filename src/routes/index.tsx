@@ -29,7 +29,7 @@ function IndexPage() {
         sx={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, 240px)',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           gap: 3,
         }}
       >
