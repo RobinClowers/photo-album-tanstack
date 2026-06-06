@@ -1,11 +1,11 @@
+import { env } from 'cloudflare:workers'
 import { createServerFn } from '@tanstack/react-start'
 import { createDB } from '@/db'
 import {
+  getAlbumDetails as getAlbumDetailsQuery,
   getAlbumsWithCoverPhoto,
   getPhotosWithAlbum,
-  getAlbumDetails as getAlbumDetailsQuery,
 } from '@/db/queries'
-import { env } from 'cloudflare:workers'
 
 export const getAllAlbums = createServerFn({
   method: 'GET',

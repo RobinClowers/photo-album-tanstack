@@ -56,9 +56,21 @@ sql = sql.replace(/^[ \t]*NOT NULL.*$/gm, '')
 sql = sql.replace(/^[ \t]*NULL.*$/gm, '')
 
 // Convert PostgreSQL indexes to SQLite syntax
-sql = sql.replace(/CREATE UNIQUE INDEX ([\w]+) ON (\w+) USING btree \(([\w",\s]+)\);/g, 'CREATE UNIQUE INDEX $1 ON $2 ($3);')
-sql = sql.replace(/CREATE INDEX ([\w]+) ON (\w+) USING btree \(([\w",\s]+)\);/g, 'CREATE INDEX $1 ON $2 ($3);')
-sql = sql.replace(/CREATE UNIQUE INDEX ([\w]+) ON (\w+) \(([\w",\s]+)\);/g, 'CREATE UNIQUE INDEX $1 ON $2 ($3);')
-sql = sql.replace(/CREATE INDEX ([\w]+) ON (\w+) \(([\w",\s]+)\);/g, 'CREATE INDEX $1 ON $2 ($3);')
+sql = sql.replace(
+  /CREATE UNIQUE INDEX ([\w]+) ON (\w+) USING btree \(([\w",\s]+)\);/g,
+  'CREATE UNIQUE INDEX $1 ON $2 ($3);',
+)
+sql = sql.replace(
+  /CREATE INDEX ([\w]+) ON (\w+) USING btree \(([\w",\s]+)\);/g,
+  'CREATE INDEX $1 ON $2 ($3);',
+)
+sql = sql.replace(
+  /CREATE UNIQUE INDEX ([\w]+) ON (\w+) \(([\w",\s]+)\);/g,
+  'CREATE UNIQUE INDEX $1 ON $2 ($3);',
+)
+sql = sql.replace(
+  /CREATE INDEX ([\w]+) ON (\w+) \(([\w",\s]+)\);/g,
+  'CREATE INDEX $1 ON $2 ($3);',
+)
 
 writeFileSync('tmp/d1-converted-backup.sql', sql)

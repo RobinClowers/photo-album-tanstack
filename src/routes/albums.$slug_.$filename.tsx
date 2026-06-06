@@ -1,8 +1,8 @@
-import { createFileRoute, notFound, Link } from '@tanstack/react-router'
-import { Container, Typography, Box, IconButton } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+import { Box, Container, IconButton, Typography } from '@mui/material'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getPhotoDetailsFn } from '@/api/albums'
 import { buildPhotoPath } from '@/utils/photo'
 
@@ -64,7 +64,8 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
 })
 
 function PhotoPage() {
-  const { photo, previousPhotoFilename, nextPhotoFilename } = Route.useLoaderData()
+  const { photo, previousPhotoFilename, nextPhotoFilename } =
+    Route.useLoaderData()
   const { slug } = Route.useParams()
 
   // Use a sensible high-res version for the main display, e.g. 'desktop' or 'original'

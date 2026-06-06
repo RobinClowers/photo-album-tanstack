@@ -1,11 +1,11 @@
+import { relations } from 'drizzle-orm'
 import {
-  sqliteTable,
-  text,
+  index,
   integer,
   real,
-  index,
+  sqliteTable,
+  text,
 } from 'drizzle-orm/sqlite-core'
-import { relations } from 'drizzle-orm'
 
 export const albums = sqliteTable(
   'albums',
@@ -204,4 +204,3 @@ export const photoVersionsRelations = relations(photoVersions, ({ one }) => ({
     references: [photos.id],
   }),
 }))
-

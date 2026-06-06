@@ -1,7 +1,7 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
 import { Container, Typography } from '@mui/material'
-import PhotoGrid from '@/components/PhotoGrid'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { getAlbumDetails } from '@/api/albums'
+import PhotoGrid from '@/components/PhotoGrid'
 
 export const Route = createFileRoute('/albums/$slug')({
   component: AlbumPage,

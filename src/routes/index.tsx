@@ -1,5 +1,5 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { Container, Typography, Box, Card, CardMedia } from '@mui/material'
+import { Box, Card, CardMedia, Container, Typography } from '@mui/material'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { getAllAlbums } from '@/api/albums'
 import { buildPhotoPath } from '@/utils/photo'

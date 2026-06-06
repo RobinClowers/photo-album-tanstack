@@ -1,12 +1,12 @@
-import { defineConfig } from 'vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
+import { createTheme } from '@mui/material'
+import { pigment } from '@pigment-css/vite-plugin'
+import tailwindcss from '@tailwindcss/vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
-import tailwindcss from '@tailwindcss/vite'
-import { cloudflare } from '@cloudflare/vite-plugin'
-import { pigment } from '@pigment-css/vite-plugin'
-import { createTheme } from '@mui/material'
 
 const config = defineConfig({
   plugins: [

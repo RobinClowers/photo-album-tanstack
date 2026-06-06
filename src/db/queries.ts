@@ -1,12 +1,12 @@
-import { eq, desc, isNotNull } from 'drizzle-orm'
-import { type DB } from './index'
+import { desc, eq, isNotNull } from 'drizzle-orm'
+import type { DB } from './index'
 import {
-  albums,
-  photos,
   type Album,
-  type Photo,
+  albums,
   type NewAlbum,
   type NewPhoto,
+  type Photo,
+  photos,
 } from './schema'
 
 export async function getAlbumsWithCoverPhoto(db: DB) {
