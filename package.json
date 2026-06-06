@@ -13,7 +13,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply photo-album --remote",
     "db:local": "wrangler d1 migrations apply photo-album --local",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "lint:fix": "biome check --write .",
+    "check": "biome check ."
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.13.8",
@@ -37,6 +41,7 @@
     "vite-tsconfig-paths": "^5.1.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
     "@pigment-css/vite-plugin": "^0.0.30",
     "@tanstack/devtools-vite": "^0.6.0",
     "@testing-library/dom": "^10.4.0",
