@@ -6,7 +6,7 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "serve": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "deploy": "bun run build && wrangler deploy",
     "preview": "bun run build && vite preview",
     "cf-typegen": "wrangler types",
@@ -18,7 +18,8 @@
     "lint": "biome lint .",
     "lint:fix": "biome check --write .",
     "check": "biome check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.13.8",
@@ -52,6 +53,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
     "jsdom": "^27.0.0",
+    "lefthook": "^2.1.12",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
