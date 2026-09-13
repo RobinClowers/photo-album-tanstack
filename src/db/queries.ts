@@ -85,10 +85,10 @@ export async function getPhotoBySlugAndFilename(
   let nextPhotoFilename = null
 
   if (currentIndex > 0) {
-    previousPhotoFilename = allPhotos[currentIndex - 1].filename
+    previousPhotoFilename = allPhotos[currentIndex - 1]?.filename ?? null
   }
   if (currentIndex !== -1 && currentIndex < allPhotos.length - 1) {
-    nextPhotoFilename = allPhotos[currentIndex + 1].filename
+    nextPhotoFilename = allPhotos[currentIndex + 1]?.filename ?? null
   }
 
   return { photo, previousPhotoFilename, nextPhotoFilename }
@@ -96,6 +96,7 @@ export async function getPhotoBySlugAndFilename(
 
 export async function createAlbum(db: DB, data: NewAlbum): Promise<Album> {
   const [album] = await db.insert(albums).values(data).returning()
+  if (!album) throw new Error('Failed to create album')
   return album
 }
 
@@ -134,6 +135,7 @@ export async function getPhoto(db: DB, id: number): Promise<Photo | undefined> {
 
 export async function createPhoto(db: DB, data: NewPhoto): Promise<Photo> {
   const [photo] = await db.insert(photos).values(data).returning()
+  if (!photo) throw new Error('Failed to create photo')
   return photo
 }
 

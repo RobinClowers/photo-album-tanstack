@@ -55,11 +55,9 @@ function buildGrid(
   for (const photo of photos) {
     const original = photo.versions.find((v) => v.size === 'original')
     if (!original?.width || !original?.height) continue
-    if (boxIndex < result.boxes.length) {
-      items.push({
-        photo,
-        dimensions: result.boxes[boxIndex],
-      })
+    const box = result.boxes[boxIndex]
+    if (box) {
+      items.push({ photo, dimensions: box })
       boxIndex++
     }
   }
