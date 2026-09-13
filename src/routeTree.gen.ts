@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlbumsSlugRouteImport } from './routes/albums.$slug'
 import { Route as AlbumsSlugFilenameRouteImport } from './routes/albums.$slug_.$filename'
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +37,52 @@ const AlbumsSlugFilenameRoute = AlbumsSlugFilenameRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/albums/$slug_/$filename': typeof AlbumsSlugFilenameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/albums/$slug' | '/albums/$slug/$filename'
+  fullPaths: '/' | '/privacy' | '/albums/$slug' | '/albums/$slug/$filename'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/albums/$slug' | '/albums/$slug/$filename'
-  id: '__root__' | '/' | '/albums/$slug' | '/albums/$slug_/$filename'
+  to: '/' | '/privacy' | '/albums/$slug' | '/albums/$slug/$filename'
+  id:
+    | '__root__'
+    | '/'
+    | '/privacy'
+    | '/albums/$slug'
+    | '/albums/$slug_/$filename'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivacyRoute: typeof PrivacyRoute
   AlbumsSlugRoute: typeof AlbumsSlugRoute
   AlbumsSlugFilenameRoute: typeof AlbumsSlugFilenameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +109,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivacyRoute: PrivacyRoute,
   AlbumsSlugRoute: AlbumsSlugRoute,
   AlbumsSlugFilenameRoute: AlbumsSlugFilenameRoute,
 }
