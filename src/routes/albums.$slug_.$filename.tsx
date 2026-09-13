@@ -12,7 +12,7 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
     const data = await getPhotoDetailsFn({
       data: { slug: params.slug, filename: params.filename },
     })
-    if (!data || !data.photo) {
+    if (!data?.photo) {
       throw notFound()
     }
     return data
@@ -25,8 +25,7 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
 
     // Determine the width and height for og:image from the original version
     const originalVersion =
-      photo.versions?.find((v: any) => v.size === 'original') ||
-      photo.versions?.[0]
+      photo.versions?.find((v) => v.size === 'original') || photo.versions?.[0]
 
     // Note: process.env is not directly available in Vite/Cloudflare without setup, so using a relative or placeholder URL
     // for og:url might be necessary, but typically you need the absolute URL for OpenGraph.
