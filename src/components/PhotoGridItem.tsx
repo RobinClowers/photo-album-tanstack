@@ -1,6 +1,10 @@
 import { Box, Typography } from '@mui/material'
 import { Link } from '@tanstack/react-router'
-import { buildPhotoPath, type PhotoWithVersions } from '@/utils/photo'
+import {
+  buildPhotoPath,
+  buildPhotoSrcSet,
+  type PhotoWithVersions,
+} from '@/utils/photo'
 
 interface PhotoGridItemProps {
   photo: PhotoWithVersions
@@ -38,6 +42,8 @@ export default function PhotoGridItem({
         <Box
           component="img"
           src={buildPhotoPath(photo, 'tablet')}
+          srcSet={buildPhotoSrcSet(photo)}
+          sizes={`${dimensions.width}px`}
           alt={photo.caption || ''}
           sx={{
             width: '100%',

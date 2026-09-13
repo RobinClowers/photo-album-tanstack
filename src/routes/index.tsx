@@ -2,7 +2,7 @@ import { Box, Card, CardMedia, Container, Typography } from '@mui/material'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { getAllAlbums } from '@/api/albums'
-import { buildPhotoPath } from '@/utils/photo'
+import { buildPhotoPath, buildPhotoSrcSet } from '@/utils/photo'
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
@@ -58,6 +58,8 @@ function IndexPage() {
                   height="180"
                   width="240"
                   image={buildPhotoPath(album.cover_photo, 'mobile_sm')}
+                  srcSet={buildPhotoSrcSet(album.cover_photo)}
+                  sizes="240px"
                   alt={album.title}
                   sx={{ objectFit: 'cover' }}
                 />
