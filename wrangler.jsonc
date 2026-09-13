@@ -30,7 +30,10 @@
     }
   ],
   "secrets": {
-    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
+    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
+  },
+  "vars": {
+    "ADMIN_EMAILS": "robin.clowers@gmail.com"
   },
   "d1_databases": [
     {
@@ -47,7 +50,14 @@
       "routes": [],
       "workers_dev": true,
       "secrets": {
-        "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
+        "required": [
+          "GOOGLE_CLIENT_ID",
+          "GOOGLE_CLIENT_SECRET",
+          "SESSION_SECRET"
+        ]
+      },
+      "vars": {
+        "ADMIN_EMAILS": "robin.clowers@gmail.com"
       },
       "d1_databases": [
         {

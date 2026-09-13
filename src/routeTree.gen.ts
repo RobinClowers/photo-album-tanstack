@@ -10,13 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AlbumsSlugRouteImport } from './routes/albums.$slug'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as AlbumsSlugFilenameRouteImport } from './routes/albums.$slug_.$filename'
+import { Route as ApiAuthGoogleLoginRouteImport } from './routes/api/auth/google/login'
+import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
 
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -24,9 +40,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AlbumsSlugRoute = AlbumsSlugRouteImport.update({
   id: '/albums/$slug',
   path: '/albums/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlbumsSlugFilenameRoute = AlbumsSlugFilenameRouteImport.update({
@@ -34,44 +60,101 @@ const AlbumsSlugFilenameRoute = AlbumsSlugFilenameRouteImport.update({
   path: '/albums/$slug/$filename',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthGoogleLoginRoute = ApiAuthGoogleLoginRouteImport.update({
+  id: '/api/auth/google/login',
+  path: '/api/auth/google/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
+  id: '/api/auth/google/callback',
+  path: '/api/auth/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/admin': typeof AdminIndexRoute
   '/albums/$slug/$filename': typeof AlbumsSlugFilenameRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/albums/$slug': typeof AlbumsSlugRoute
+  '/admin/': typeof AdminIndexRoute
   '/albums/$slug_/$filename': typeof AlbumsSlugFilenameRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/privacy' | '/albums/$slug' | '/albums/$slug/$filename'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/privacy'
+    | '/albums/$slug'
+    | '/admin/'
+    | '/albums/$slug/$filename'
+    | '/api/auth/logout'
+    | '/api/auth/google/callback'
+    | '/api/auth/google/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/privacy' | '/albums/$slug' | '/albums/$slug/$filename'
+  to:
+    | '/'
+    | '/login'
+    | '/privacy'
+    | '/albums/$slug'
+    | '/admin'
+    | '/albums/$slug/$filename'
+    | '/api/auth/logout'
+    | '/api/auth/google/callback'
+    | '/api/auth/google/login'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/login'
     | '/privacy'
     | '/albums/$slug'
+    | '/admin/'
     | '/albums/$slug_/$filename'
+    | '/api/auth/logout'
+    | '/api/auth/google/callback'
+    | '/api/auth/google/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   AlbumsSlugRoute: typeof AlbumsSlugRoute
   AlbumsSlugFilenameRoute: typeof AlbumsSlugFilenameRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
+  ApiAuthGoogleLoginRoute: typeof ApiAuthGoogleLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -83,6 +166,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -90,11 +187,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/albums/$slug': {
       id: '/albums/$slug'
       path: '/albums/$slug'
       fullPath: '/albums/$slug'
       preLoaderRoute: typeof AlbumsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/albums/$slug_/$filename': {
@@ -104,14 +215,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlbumsSlugFilenameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/google/login': {
+      id: '/api/auth/google/login'
+      path: '/api/auth/google/login'
+      fullPath: '/api/auth/google/login'
+      preLoaderRoute: typeof ApiAuthGoogleLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/google/callback': {
+      id: '/api/auth/google/callback'
+      path: '/api/auth/google/callback'
+      fullPath: '/api/auth/google/callback'
+      preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   AlbumsSlugRoute: AlbumsSlugRoute,
   AlbumsSlugFilenameRoute: AlbumsSlugFilenameRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
+  ApiAuthGoogleLoginRoute: ApiAuthGoogleLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
