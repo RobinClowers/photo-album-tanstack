@@ -1,37 +1,35 @@
 import { env } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
+import {
+  deleteCookie,
+  getCookie,
+  getRequestProtocol,
+} from '@tanstack/react-start/server'
 import { createDB } from '@/db'
 import { upsertGoogleUser } from '@/db/users'
-import { isAdminEmail } from '@/server/admin-allowlist'
-import {
-  isSecureRequest,
-  parseCookies,
-  serializeCookie,
-} from '@/server/cookies'
+import { isAdminEmail, normalizeEmail } from '@/server/admin-allowlist'
 import {
   exchangeCode,
   fetchUserInfo,
   googleCallbackUrl,
   OAUTH_STATE_COOKIE,
+  stateCookieOptions,
 } from '@/server/google-oauth'
 import { getAppSession } from '@/server/session'
-
-type LoginError = 'oauth' | 'state' | 'not_admin' | 'unverified'
+import type { LoginError } from '@/utils/loginErrors'
 
 function redirectWithHeaders(request: Request, to: string): Response {
-  // The session cookie written by session.update() lives in the request
-  // context and is merged onto this response by TanStack Start; we only need
-  // to expire the one-time state cookie here.
-  const headers = new Headers()
-  headers.set('location', new URL(to, request.url).toString())
-  headers.append(
-    'set-cookie',
-    serializeCookie(OAUTH_STATE_COOKIE, '', {
-      maxAge: 0,
-      secure: isSecureRequest(request),
-    }),
+  // Cookies written to the request context (the session cookie from
+  // session.update(), plus the expired state cookie below) are merged onto
+  // this response by TanStack Start.
+  deleteCookie(
+    OAUTH_STATE_COOKIE,
+    stateCookieOptions(getRequestProtocol() === 'https'),
   )
-  return new Response(null, { status: 302, headers })
+  return new Response(null, {
+    status: 302,
+    headers: { location: new URL(to, request.url).toString() },
+  })
 }
 
 function loginError(request: Request, error: LoginError): Response {
@@ -46,12 +44,11 @@ export const Route = createFileRoute('/api/auth/google/callback')({
         const url = new URL(request.url)
         const code = url.searchParams.get('code')
         const state = url.searchParams.get('state')
-        const cookies = parseCookies(request.headers.get('cookie'))
 
         if (url.searchParams.get('error') || !code) {
           return loginError(request, 'oauth')
         }
-        if (!state || state !== cookies[OAUTH_STATE_COOKIE]) {
+        if (!state || state !== getCookie(OAUTH_STATE_COOKIE)) {
           return loginError(request, 'state')
         }
 
@@ -69,20 +66,38 @@ export const Route = createFileRoute('/api/auth/google/callback')({
           return loginError(request, 'oauth')
         }
 
-        if (!profile.email || profile.email_verified === false) {
+        // The userinfo response is untyped JSON: check the claims we rely on
+        // rather than trusting the type assertion.
+        const sub = profile.sub
+        if (typeof sub !== 'string' || sub === '') {
+          console.error('Google userinfo response had no subject claim')
+          return loginError(request, 'oauth')
+        }
+        // A missing email_verified claim is not a verified email.
+        if (
+          typeof profile.email !== 'string' ||
+          profile.email === '' ||
+          profile.email_verified !== true
+        ) {
           return loginError(request, 'unverified')
         }
 
-        const admin = isAdminEmail(profile.email, env.ADMIN_EMAILS)
+        const email = normalizeEmail(profile.email)
+        const admin = isAdminEmail(email, env.ADMIN_EMAILS)
         if (!admin) {
-          console.warn('Rejected non-admin sign-in:', profile.email)
+          // Domain only: any visitor can reach this, and their full address
+          // does not belong in the Workers logs.
+          console.warn(
+            'Rejected non-admin sign-in from domain:',
+            email.split('@')[1] ?? 'unknown',
+          )
           return loginError(request, 'not_admin')
         }
 
         const db = createDB(env.photo_album)
         const user = await upsertGoogleUser(db, {
-          email: profile.email,
-          sub: profile.sub,
+          email,
+          sub,
           name: profile.name ?? null,
           admin,
         })

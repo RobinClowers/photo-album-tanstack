@@ -113,6 +113,20 @@ export async function fetchUserInfo(
 /** Name of the one-time CSRF state cookie used during sign-in. */
 export const OAUTH_STATE_COOKIE = 'oauth_state'
 
+/**
+ * Attributes for the state cookie. Shared by the login and callback handlers
+ * so the browser matches the same cookie when it is cleared. SameSite=Lax so
+ * it survives Google's top-level redirect back to the callback.
+ */
+export function stateCookieOptions(secure: boolean) {
+  return {
+    path: '/',
+    httpOnly: true,
+    secure,
+    sameSite: 'lax' as const,
+  }
+}
+
 /** Absolute callback URL for the current origin (registered in Google). */
 export function googleCallbackUrl(request: Request): string {
   return new URL('/api/auth/google/callback', request.url).toString()

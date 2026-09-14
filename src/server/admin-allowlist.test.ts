@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isAdminEmail, parseAdminEmails } from './admin-allowlist'
+import {
+  isAdminEmail,
+  normalizeEmail,
+  parseAdminEmails,
+} from './admin-allowlist'
 
 describe('parseAdminEmails', () => {
   it('splits on commas, trims, lowercases and drops blanks', () => {
@@ -24,5 +28,11 @@ describe('isAdminEmail', () => {
     expect(isAdminEmail('', 'robin@example.com')).toBe(false)
     expect(isAdminEmail(null, 'robin@example.com')).toBe(false)
     expect(isAdminEmail('robin@example.com', '')).toBe(false)
+  })
+})
+
+describe('normalizeEmail', () => {
+  it('trims and lowercases', () => {
+    expect(normalizeEmail('  Robin@Example.COM ')).toBe('robin@example.com')
   })
 })

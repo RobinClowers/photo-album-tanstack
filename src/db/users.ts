@@ -20,7 +20,9 @@ export async function getUserByEmail(
 
 /**
  * Find or create the user row for a Google account and record the Google
- * identity on it. `admin` mirrors the allowlist decision made by the caller.
+ * identity on it. `admin` mirrors the allowlist decision made by the caller,
+ * which also passes `email` already normalized (see `normalizeEmail`) — the
+ * lookup below is case-sensitive and `users.email` has no unique constraint.
  */
 export async function upsertGoogleUser(
   db: DB,

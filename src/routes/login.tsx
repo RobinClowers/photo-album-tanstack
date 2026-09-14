@@ -2,20 +2,24 @@ import { Google } from '@mui/icons-material'
 import { Alert, Button, Container, Paper, Typography } from '@mui/material'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getCurrentUser } from '@/api/auth'
+import { type LoginError, parseLoginError } from '@/utils/loginErrors'
 
-const ERROR_MESSAGES: Record<string, string> = {
+const ERROR_MESSAGES: Record<LoginError, string> = {
   oauth: 'Google sign-in failed. Please try again.',
   state: 'Sign-in session expired. Please try again.',
   not_admin: 'That Google account is not an administrator of this site.',
   unverified: 'That Google account has no verified email address.',
 }
 
-type LoginSearch = { error?: string }
+type LoginSearch = { error?: LoginError }
 
 export const Route = createFileRoute('/login')({
-  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
-    ...(typeof search.error === 'string' ? { error: search.error } : {}),
-  }),
+  validateSearch: (search: Record<string, unknown>): LoginSearch => {
+    // Narrowed to the known codes: an arbitrary `?error=` key would otherwise
+    // read straight off Object.prototype.
+    const error = parseLoginError(search.error)
+    return error ? { error } : {}
+  },
   beforeLoad: async () => {
     const user = await getCurrentUser()
     if (user) throw redirect({ to: '/admin' })

@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers'
 import { createDB } from '@/db'
 import { getUserById } from '@/db/users'
 import { isAdminEmail } from './admin-allowlist'
-import { getAppSession } from './session'
+import { getAppSession, hasSessionCookie } from './session'
 
 export interface AdminUser {
   id: number
@@ -16,6 +16,11 @@ export interface AdminUser {
  * effect immediately, even for existing sessions.
  */
 export async function getCurrentAdmin(): Promise<AdminUser | null> {
+  // Anonymous requests must not open a session at all: doing so mints a fresh
+  // one and sets a 30-day cookie on every visitor to /login or /admin, and a
+  // later sign-in would inherit that session's createdAt (and expiry).
+  if (!hasSessionCookie()) return null
+
   const session = await getAppSession()
   const userId = session.data.userId
   if (!userId) return null
