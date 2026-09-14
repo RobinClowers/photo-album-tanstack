@@ -28,14 +28,16 @@ import {
 import { type AdminPhoto, PhotoTile } from '@/components/admin/PhotoTile'
 import { useAdminAction } from '@/components/admin/useAdminAction'
 import type { AdminAlbumDetails } from '@/db/admin'
+import { parseRecordId } from '@/utils/id'
 import { isValidSlug } from '@/utils/slug'
 
 export const Route = createFileRoute('/admin/albums/$id')({
   loader: async ({ params }) => {
-    const id = Number(params.id)
-    const album = Number.isInteger(id)
-      ? await adminGetAlbum({ data: { id } })
-      : null
+    // Anything that is not a plain positive integer is a not-found URL, not a
+    // server error: '0'/'-1'/'1e300' would fail zod validation on the server
+    // and render a raw ZodError, and '0x10'/'1e2'/'1.0' would alias real ids.
+    const id = parseRecordId(params.id)
+    const album = id === null ? null : await adminGetAlbum({ data: { id } })
     if (!album) throw notFound()
     return { album }
   },
@@ -100,7 +102,7 @@ function AdminAlbumPage() {
         </Box>
 
         <AlbumDetailsForm
-          key={`${album.id}-${album.updatedAt}`}
+          key={album.id}
           album={album}
           pending={pending}
           onSave={(title, slug) =>
@@ -131,10 +133,14 @@ function AdminAlbumPage() {
                   isCover={album.coverPhotoId === photo.id}
                   disabled={pending}
                   onSaveCaption={(caption) =>
-                    run(() =>
-                      adminUpdatePhotoCaption({
-                        data: { photoId: photo.id, caption },
-                      }),
+                    run(
+                      () =>
+                        adminUpdatePhotoCaption({
+                          data: { photoId: photo.id, caption },
+                        }),
+                      // Saved on blur: the tile shows its own saving state so
+                      // the click that caused the blur still lands.
+                      { trackPending: false },
                     )
                   }
                   onSetCover={() =>
@@ -156,8 +162,13 @@ function AdminAlbumPage() {
         <DialogTitle>Delete photo?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Removes <strong>{toDelete?.filename}</strong> from this album. The
-            image files stay in storage for now.
+            Removes <strong>{toDelete?.filename}</strong> from this album, along
+            with its comments and plus ones. The image files stay in storage for
+            now.
+            {album.coverPhotoId === toDelete?.id &&
+              (album.photos.length > 1
+                ? ' The earliest remaining photo becomes the cover.'
+                : ' This album has no other photos, so it will be unpublished.')}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -197,9 +208,22 @@ function AlbumDetailsForm({
   pending: boolean
   onSave: (title: string, slug: string) => void
 }) {
-  const [title, setTitle] = useState(album.title ?? '')
-  const [slug, setSlug] = useState(album.slug ?? '')
-  const dirty = title !== (album.title ?? '') || slug !== (album.slug ?? '')
+  const savedTitle = album.title ?? ''
+  const savedSlug = album.slug ?? ''
+  const [title, setTitle] = useState(savedTitle)
+  const [slug, setSlug] = useState(savedSlug)
+  const [synced, setSynced] = useState({ title: savedTitle, slug: savedSlug })
+
+  // Resync only when the saved values actually change. Keying the form on
+  // `album.updatedAt` instead would remount it after a set-cover or publish
+  // (both bump updated_at) and silently drop unsaved edits.
+  if (synced.title !== savedTitle || synced.slug !== savedSlug) {
+    setSynced({ title: savedTitle, slug: savedSlug })
+    setTitle(savedTitle)
+    setSlug(savedSlug)
+  }
+
+  const dirty = title.trim() !== savedTitle || slug.trim() !== savedSlug
   const slugError = slug && !isValidSlug(slug)
 
   return (
@@ -207,7 +231,7 @@ function AlbumDetailsForm({
       component="form"
       onSubmit={(e) => {
         e.preventDefault()
-        onSave(title.trim(), slug)
+        onSave(title.trim(), slug.trim())
       }}
       sx={{ p: 2 }}
     >

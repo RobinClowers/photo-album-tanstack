@@ -16,10 +16,13 @@ import { Link } from '@tanstack/react-router'
 import type { AdminAlbumRow } from '@/db/admin'
 import { buildPhotoPath } from '@/utils/photo'
 
+/**
+ * Stored timestamps are UTC with no offset ('YYYY-MM-DD HH:MM:SS'), which
+ * browsers parse as local time, so round-tripping through `Date` shifts the
+ * date by a day west of UTC. The date is already the first ten characters.
+ */
 function formatDate(value: string | null) {
-  if (!value) return ''
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? value : d.toISOString().slice(0, 10)
+  return value ? value.slice(0, 10) : ''
 }
 
 export function AlbumTable({

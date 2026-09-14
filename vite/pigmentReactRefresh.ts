@@ -26,11 +26,13 @@ const STUB_PATH = fileURLToPath(
 export function pigmentWithReactRefresh(
   plugins: PluginOption[],
 ): PluginOption[] {
+  let wrappedAny = false
   for (const plugin of plugins) {
     if (!plugin || Array.isArray(plugin) || !('name' in plugin)) continue
     if (plugin.name !== 'vite-plugin-zero-runtime') continue
     const original = plugin.transform
     if (typeof original !== 'function') continue
+    wrappedAny = true
 
     type Transform = NonNullable<Plugin['transform']>
     const wrapped: Transform = function (this, ...args) {
@@ -49,6 +51,11 @@ export function pigmentWithReactRefresh(
       return Reflect.apply(original, context, args)
     }
     plugin.transform = wrapped
+  }
+  if (!wrappedAny) {
+    throw new Error(
+      'pigmentWithReactRefresh found no "vite-plugin-zero-runtime" plugin with a function-form transform to wrap. Pigment CSS probably changed its plugin name or transform shape: re-check the /admin dev server (ssr: false) for the "/@react-refresh" resolve error before removing this workaround.',
+    )
   }
   return plugins
 }

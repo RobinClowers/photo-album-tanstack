@@ -11,7 +11,7 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import type { AdminAlbumDetails } from '@/db/admin'
-import { buildPhotoPath } from '@/utils/photo'
+import { buildPhotoPath, CAPTION_MAX_LENGTH } from '@/utils/photo'
 
 export type AdminPhoto = AdminAlbumDetails['photos'][number]
 
@@ -26,12 +26,33 @@ export function PhotoTile({
   photo: AdminPhoto
   isCover: boolean
   disabled: boolean
-  onSaveCaption: (caption: string) => void
+  onSaveCaption: (caption: string) => Promise<unknown>
   onSetCover: () => void
   onDelete: () => void
 }) {
-  const [caption, setCaption] = useState(photo.caption ?? '')
-  const dirty = caption !== (photo.caption ?? '')
+  const saved = photo.caption ?? ''
+  const [caption, setCaption] = useState(saved)
+  const [syncedWith, setSyncedWith] = useState(saved)
+  const [saving, setSaving] = useState(false)
+
+  // The server trims the caption and stores '' as null, so pick up what it
+  // actually saved instead of staying dirty forever and re-POSTing on blur.
+  if (syncedWith !== saved) {
+    setSyncedWith(saved)
+    setCaption(saved)
+  }
+
+  const dirty = caption.trim() !== saved.trim()
+
+  const saveCaption = async () => {
+    if (!dirty || saving) return
+    setSaving(true)
+    try {
+      await onSaveCaption(caption)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -59,15 +80,18 @@ export function PhotoTile({
         <TextField
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          onBlur={() => dirty && onSaveCaption(caption)}
+          onBlur={saveCaption}
           placeholder="Caption"
           size="small"
           multiline
           minRows={1}
           maxRows={4}
           fullWidth
-          disabled={disabled}
-          slotProps={{ input: { sx: { fontSize: 13 } } }}
+          disabled={disabled || saving}
+          slotProps={{
+            input: { sx: { fontSize: 13 } },
+            htmlInput: { maxLength: CAPTION_MAX_LENGTH },
+          }}
         />
       </CardContent>
       <CardActions sx={{ justifyContent: 'space-between', px: 1 }}>

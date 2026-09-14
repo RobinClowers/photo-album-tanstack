@@ -1,4 +1,4 @@
-import { desc, eq, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import type { DB } from './index'
 import {
   type Album,
@@ -28,17 +28,35 @@ export async function getAlbum(db: DB, id: number): Promise<Album | undefined> {
   return album
 }
 
+/**
+ * Unpublished albums are drafts: only the admin may see them, so every
+ * public lookup by slug has to filter on published_at.
+ */
+function bySlug(slug: string, includeUnpublished: boolean) {
+  return includeUnpublished
+    ? eq(albums.slug, slug)
+    : and(eq(albums.slug, slug), isNotNull(albums.publishedAt))
+}
+
 export async function getAlbumBySlug(
   db: DB,
   slug: string,
+  includeUnpublished = false,
 ): Promise<Album | undefined> {
-  const [album] = await db.select().from(albums).where(eq(albums.slug, slug))
+  const [album] = await db
+    .select()
+    .from(albums)
+    .where(bySlug(slug, includeUnpublished))
   return album
 }
 
-export async function getAlbumDetails(db: DB, slug: string) {
+export async function getAlbumDetails(
+  db: DB,
+  slug: string,
+  includeUnpublished = false,
+) {
   return db.query.albums.findFirst({
-    where: eq(albums.slug, slug),
+    where: bySlug(slug, includeUnpublished),
     with: {
       cover_photo: {
         with: {
@@ -59,8 +77,9 @@ export async function getPhotoBySlugAndFilename(
   db: DB,
   slug: string,
   filename: string,
+  includeUnpublished = false,
 ) {
-  const album = await getAlbumBySlug(db, slug)
+  const album = await getAlbumBySlug(db, slug, includeUnpublished)
   if (!album) return null
 
   const photo = await db.query.photos.findFirst({
@@ -150,10 +169,6 @@ export async function updatePhoto(
     .where(eq(photos.id, id))
     .returning()
   return photo
-}
-
-export async function deletePhoto(db: DB, id: number): Promise<void> {
-  await db.delete(photos).where(eq(photos.id, id))
 }
 
 export async function getPhotosWithAlbum(

@@ -17,6 +17,14 @@ describe('slugify', () => {
   it('returns an empty string when nothing is usable', () => {
     expect(slugify('***')).toBe('')
   })
+
+  it('transliterates letters NFKD cannot decompose', () => {
+    expect(slugify('Ærø')).toBe('aero')
+    expect(slugify('Straße')).toBe('strasse')
+    expect(slugify('Łódź')).toBe('lodz')
+    expect(slugify('Đà Nẵng')).toBe('da-nang')
+    expect(slugify('Œuvres de Þórshöfn')).toBe('oeuvres-de-thorshofn')
+  })
 })
 
 describe('isValidSlug', () => {

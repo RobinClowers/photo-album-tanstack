@@ -12,6 +12,9 @@ export const BASE_PHOTO_PATH = (
 
 export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
 
+/** Shared by the caption input and the server-side caption validator. */
+export const CAPTION_MAX_LENGTH = 2000
+
 export function buildPhotoPath(
   photo: PhotoWithVersions | null | undefined,
   size: string,

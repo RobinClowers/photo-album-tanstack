@@ -5,6 +5,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
 export const albums = sqliteTable(
@@ -20,7 +21,9 @@ export const albums = sqliteTable(
     firstPhotoTakenAt: text('first_photo_taken_at'),
   },
   (table) => ({
-    slugIdx: index('idx_albums_slug').on(table.slug),
+    // Unique: the public /albums/$slug lookup must resolve to one album, and
+    // a check-then-insert in the admin cannot prevent a duplicate on its own.
+    slugIdx: uniqueIndex('idx_albums_slug').on(table.slug),
   }),
 )
 

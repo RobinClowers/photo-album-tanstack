@@ -10,6 +10,7 @@ import {
   setAlbumPublished,
 } from '@/db/admin'
 import { createAlbum, getPhoto, updateAlbum, updatePhoto } from '@/db/queries'
+import { CAPTION_MAX_LENGTH } from '@/utils/photo'
 import { SLUG_PATTERN } from '@/utils/slug'
 import { requireAdmin } from './auth'
 
@@ -24,44 +25,79 @@ const slug = z
 
 const db = () => createDB(env.photo_album)
 
+/**
+ * Validation failures end up in a Snackbar, and `ZodError.message` is a JSON
+ * dump of every issue, so surface just the first message.
+ */
+function validate<T extends z.ZodType>(schema: T, input: unknown): z.output<T> {
+  const result = schema.safeParse(input)
+  if (result.success) return result.data
+  throw new Error(result.error.issues[0]?.message ?? 'Invalid input')
+}
+
+const slugTaken = (value: string) =>
+  new Error(`An album with slug "${value}" already exists`)
+
+/**
+ * `isSlugTaken` is only a fast path: albums.slug is unique in the database, so
+ * a concurrent create or rename can still collide. (albums.title is unique
+ * too, inherited from the Rails schema.)
+ */
+async function withConstraintErrors<T>(
+  value: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('UNIQUE constraint failed: albums.slug')) {
+      throw slugTaken(value)
+    }
+    if (message.includes('UNIQUE constraint failed: albums.title')) {
+      throw new Error('An album with that title already exists')
+    }
+    throw err
+  }
+}
+
 export const adminListAlbums = createServerFn({ method: 'GET' })
   .middleware([requireAdmin])
   .handler(async () => listAlbumsForAdmin(db()))
 
 export const adminGetAlbum = createServerFn({ method: 'GET' })
   .middleware([requireAdmin])
-  .inputValidator((input: unknown) => z.object({ id }).parse(input))
+  .inputValidator((input: unknown) => validate(z.object({ id }), input))
   .handler(async ({ data }) => (await getAlbumForAdmin(db(), data.id)) ?? null)
 
 export const adminCreateAlbum = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
-  .inputValidator((input: unknown) => z.object({ title, slug }).parse(input))
+  .inputValidator((input: unknown) =>
+    validate(z.object({ title, slug }), input),
+  )
   .handler(async ({ data }) => {
-    if (await isSlugTaken(db(), data.slug)) {
-      throw new Error(`An album with slug "${data.slug}" already exists`)
-    }
+    if (await isSlugTaken(db(), data.slug)) throw slugTaken(data.slug)
     const now = new Date().toISOString()
-    return createAlbum(db(), {
-      title: data.title,
-      slug: data.slug,
-      createdAt: now,
-      updatedAt: now,
-    })
+    return withConstraintErrors(data.slug, () =>
+      createAlbum(db(), {
+        title: data.title,
+        slug: data.slug,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    )
   })
 
 export const adminUpdateAlbum = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) =>
-    z.object({ id, title, slug }).parse(input),
+    validate(z.object({ id, title, slug }), input),
   )
   .handler(async ({ data }) => {
-    if (await isSlugTaken(db(), data.slug, data.id)) {
-      throw new Error(`An album with slug "${data.slug}" already exists`)
-    }
-    const album = await updateAlbum(db(), data.id, {
-      title: data.title,
-      slug: data.slug,
-    })
+    if (await isSlugTaken(db(), data.slug, data.id)) throw slugTaken(data.slug)
+    const album = await withConstraintErrors(data.slug, () =>
+      updateAlbum(db(), data.id, { title: data.title, slug: data.slug }),
+    )
     if (!album) throw new Error('Album not found')
     return album
   })
@@ -69,18 +105,24 @@ export const adminUpdateAlbum = createServerFn({ method: 'POST' })
 export const adminSetAlbumPublished = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) =>
-    z.object({ id, published: z.boolean() }).parse(input),
+    validate(z.object({ id, published: z.boolean() }), input),
   )
   .handler(async ({ data }) => {
-    const album = await setAlbumPublished(db(), data.id, data.published)
-    if (!album) throw new Error('Album not found')
-    return album
+    const result = await setAlbumPublished(db(), data.id, data.published)
+    if (!result.ok) {
+      throw new Error(
+        result.reason === 'no-cover'
+          ? 'Choose a cover photo before publishing'
+          : 'Album not found',
+      )
+    }
+    return result.album
   })
 
 export const adminSetCoverPhoto = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) =>
-    z.object({ albumId: id, photoId: id }).parse(input),
+    validate(z.object({ albumId: id, photoId: id }), input),
   )
   .handler(async ({ data }) => {
     const photo = await getPhoto(db(), data.photoId)
@@ -97,9 +139,13 @@ export const adminSetCoverPhoto = createServerFn({ method: 'POST' })
 export const adminUpdatePhotoCaption = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) =>
-    z
-      .object({ photoId: id, caption: z.string().trim().max(2000) })
-      .parse(input),
+    validate(
+      z.object({
+        photoId: id,
+        caption: z.string().trim().max(CAPTION_MAX_LENGTH),
+      }),
+      input,
+    ),
   )
   .handler(async ({ data }) => {
     const photo = await updatePhoto(db(), data.photoId, {
@@ -111,7 +157,9 @@ export const adminUpdatePhotoCaption = createServerFn({ method: 'POST' })
 
 export const adminDeletePhoto = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
-  .inputValidator((input: unknown) => z.object({ photoId: id }).parse(input))
+  .inputValidator((input: unknown) =>
+    validate(z.object({ photoId: id }), input),
+  )
   .handler(async ({ data }) => {
     const photo = await deletePhotoRecord(db(), data.photoId)
     if (!photo) throw new Error('Photo not found')
