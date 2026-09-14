@@ -8,6 +8,13 @@
       "when": 1769135394032,
       "tag": "0000_careful_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789424734965,
+      "tag": "0001_youthful_champions",
+      "breakpoints": true
     }
   ]
 }

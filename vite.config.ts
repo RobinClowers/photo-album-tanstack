@@ -7,15 +7,18 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
+import { pigmentWithReactRefresh } from './vite/pigmentReactRefresh'
 
 const config = defineConfig({
   plugins: [
-    pigment({
-      transformLibraries: ['@mui/material'],
-      theme: createTheme({
-        cssVariables: true,
+    pigmentWithReactRefresh(
+      pigment({
+        transformLibraries: ['@mui/material'],
+        theme: createTheme({
+          cssVariables: true,
+        }),
       }),
-    }),
+    ),
     devtools(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     // this is the plugin that enables path aliases
