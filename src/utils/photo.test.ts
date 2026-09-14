@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { PhotoVersion } from '@/db/schema'
 import {
-  BASE_PHOTO_PATH,
   buildPhotoPath,
   buildPhotoSrcSet,
   type PhotoWithVersions,
@@ -49,11 +48,13 @@ function photo(versions: PhotoVersion[]): PhotoWithVersions {
   }
 }
 
+const DEFAULT_BASE = 'https://s3.amazonaws.com/robin-photos/'
+
 describe('buildPhotoPath', () => {
   it('builds <base>/<album path>/<size>/<version filename>', () => {
-    const p = photo([version({ size: 'tablet', filename: 'IMG_1.jpg' })])
+    const p = photo([version({ size: 'tablet', filename: 'IMG_1_tablet.jpg' })])
     expect(buildPhotoPath(p, 'tablet')).toBe(
-      `${BASE_PHOTO_PATH}bangkok/tablet/IMG_1.jpg`,
+      'https://s3.amazonaws.com/robin-photos/bangkok/tablet/IMG_1_tablet.jpg',
     )
   })
 
@@ -71,15 +72,64 @@ describe('buildPhotoSrcSet', () => {
       version({ size: 'mobile_sm', width: 640, filename: 'a.jpg' }),
     ])
     expect(buildPhotoSrcSet(p)).toBe(
-      [
-        `${BASE_PHOTO_PATH}bangkok/mobile_sm/a.jpg 640w`,
-        `${BASE_PHOTO_PATH}bangkok/desktop/a.jpg 3072w`,
-      ].join(', '),
+      'https://s3.amazonaws.com/robin-photos/bangkok/mobile_sm/a.jpg 640w, ' +
+        'https://s3.amazonaws.com/robin-photos/bangkok/desktop/a.jpg 3072w',
     )
   })
 
   it('is undefined when only the original exists', () => {
     const p = photo([version({ size: 'original', width: 6000 })])
     expect(buildPhotoSrcSet(p)).toBeUndefined()
+  })
+})
+
+describe('BASE_PHOTO_PATH', () => {
+  // The base URL is read once at module load, so each case needs a fresh
+  // module instance: stubbing the env after a static import changes nothing.
+  async function importWithBase(base?: string) {
+    vi.resetModules()
+    if (base === undefined) {
+      vi.stubEnv('VITE_PHOTO_BASE_URL', '')
+    } else {
+      vi.stubEnv('VITE_PHOTO_BASE_URL', base)
+    }
+    return import('./photo')
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it('falls back to the production bucket when unset', async () => {
+    const { BASE_PHOTO_PATH } = await importWithBase()
+    expect(BASE_PHOTO_PATH).toBe(DEFAULT_BASE)
+  })
+
+  it('uses VITE_PHOTO_BASE_URL when set', async () => {
+    const { BASE_PHOTO_PATH, buildPhotoPath: build } = await importWithBase(
+      'https://staging.example.com/photos/',
+    )
+    expect(BASE_PHOTO_PATH).toBe('https://staging.example.com/photos/')
+    expect(build(photo([version({ size: 'tablet' })]), 'tablet')).toBe(
+      'https://staging.example.com/photos/bangkok/tablet/IMG_1.jpg',
+    )
+  })
+
+  it('adds a missing trailing slash', async () => {
+    const { BASE_PHOTO_PATH, buildPhotoPath: build } = await importWithBase(
+      'https://staging.example.com/photos',
+    )
+    expect(BASE_PHOTO_PATH).toBe('https://staging.example.com/photos/')
+    expect(build(photo([version({ size: 'tablet' })]), 'tablet')).toBe(
+      'https://staging.example.com/photos/bangkok/tablet/IMG_1.jpg',
+    )
+  })
+
+  it('does not double a trailing slash', async () => {
+    const { BASE_PHOTO_PATH } = await importWithBase(
+      'https://staging.example.com/photos/',
+    )
+    expect(BASE_PHOTO_PATH).toBe('https://staging.example.com/photos/')
   })
 })

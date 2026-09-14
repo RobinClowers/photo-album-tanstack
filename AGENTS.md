@@ -33,7 +33,10 @@ bun test             # Run all tests
 bun run test         # Alternative test command
 ```
 
-_Note: Testing infrastructure exists with Vitest + Testing Library, but no test files exist yet._
+Tests live next to the code they cover as `*.test.ts` / `*.test.tsx` (for
+example `src/utils/photo.test.ts`) and run under Vitest + Testing Library.
+`vitest.config.ts` deliberately omits the Cloudflare plugin, so tests must not
+depend on workerd bindings.
 
 ### Additional Commands
 
@@ -294,7 +297,12 @@ function AlbumList() {
 
 ## Testing Guidelines
 
-When adding tests (currently none exist):
+Tests sit beside the module under test and are run by `bun run test`
+(`vitest run`). Assert literal expected values rather than recomputing them
+from the module's own exports, or the test proves nothing. Module-level
+constants derived from `import.meta.env` are captured at import time: to cover
+a different value, use `vi.stubEnv(...)` plus `vi.resetModules()` and a dynamic
+`await import('./module')` (see `src/utils/photo.test.ts`).
 
 ```typescript
 import { render, screen } from '@testing-library/react'
@@ -314,9 +322,27 @@ describe('AlbumCard', () => {
 
 ### Cloudflare Workers
 
-- Use `npm run deploy` for production deployment
-- Environment variables configured in `wrangler.jsonc`
-- Types generated with `npm run cf-typegen`
+- Use `bun run deploy` for production and `bun run deploy:staging` for staging.
+  The environment is selected **at build time** via `CLOUDFLARE_ENV`, which the
+  Cloudflare Vite plugin bakes into `dist/server/wrangler.json`; `wrangler
+  deploy` ignores `--env` against that config, so never run
+  `wrangler deploy --env staging` by hand.
+- Types generated with `bun run cf-typegen` (`wrangler types`)
+
+### Configuration surfaces
+
+There are three, and they are not interchangeable:
+
+1. **Runtime `vars`** — non-secret values in `wrangler.jsonc`. Named
+   environments do not inherit them, so every entry must be mirrored under
+   `env.staging`. Read from the Worker `Env` binding.
+2. **Build-time `VITE_*`** — `.env`, `.env.staging`, ... loaded by Vite per
+   `--mode` and inlined at build time. Read via `import.meta.env`; never put
+   secrets here, they end up in the client bundle.
+3. **Secrets** — `.dev.vars` locally (gitignored), `wrangler secret put NAME
+   [--env staging]` per deployed environment, and declared in `wrangler.jsonc`
+   under `secrets.required` (top level *and* `env.staging`) so `wrangler types`
+   is deterministic.
 
 ### Build Process
 

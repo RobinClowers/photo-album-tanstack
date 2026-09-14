@@ -7,10 +7,12 @@
  *   - "staging": deployed with `bun run deploy:staging` to a workers.dev URL,
  *     backed by its own D1 database (a copy of production data).
  *
- * Bindings (d1_databases, vars, queues, ...) are NOT inherited by named
- * environments, so anything added at the top level must be mirrored under
- * env.staging. Secrets are set per environment with
- * `wrangler secret put NAME [--env staging]` and read locally from .dev.vars.
+ * Bindings (d1_databases, vars, secrets, queues, ...) are NOT inherited by
+ * named environments, so anything added at the top level must be mirrored
+ * under env.staging. Secrets are set per environment with
+ * `wrangler secret put NAME [--env staging]` and read locally from .dev.vars;
+ * listing them under `secrets.required` keeps `wrangler types` deterministic
+ * instead of inferring them from whatever .dev.vars happens to be on disk.
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -27,8 +29,8 @@
       "custom_domain": true
     }
   ],
-  "vars": {
-    "APP_ENV": "production"
+  "secrets": {
+    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
   },
   "d1_databases": [
     {
@@ -44,8 +46,8 @@
       // routes ARE inherited; clear them so staging never claims the custom domain
       "routes": [],
       "workers_dev": true,
-      "vars": {
-        "APP_ENV": "staging"
+      "secrets": {
+        "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
       },
       "d1_databases": [
         {

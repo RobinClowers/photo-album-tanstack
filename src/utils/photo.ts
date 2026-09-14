@@ -2,11 +2,13 @@ import type { Photo, PhotoVersion } from '@/db/schema'
 
 /**
  * Public base URL for photo objects. Build-time configurable per Vite mode
- * (see .env.staging) so staging can point at its own bucket.
+ * (see .env.staging) so staging can point at its own bucket. Normalized to
+ * exactly one trailing slash so a configured value without one still works.
  */
-export const BASE_PHOTO_PATH =
+export const BASE_PHOTO_PATH = (
   import.meta.env.VITE_PHOTO_BASE_URL ||
   'https://s3.amazonaws.com/robin-photos/'
+).replace(/\/?$/, '/')
 
 export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
 
