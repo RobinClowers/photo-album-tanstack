@@ -35,7 +35,7 @@ database until you run `bun run db:local`, which applies the migrations in
 from a D1 export (see [Database](#database) for how to produce one):
 
 ```bash
-bunx wrangler d1 execute photo-album --local --file tmp/staging-content.sql
+bun run wrangler d1 execute photo-album --local --file tmp/staging-content.sql
 ```
 
 Configuration lives in three places:
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS d1_migrations(
 INSERT OR IGNORE INTO d1_migrations(name) VALUES ('0000_careful_paladin.sql');
 ```
 
-Run it with `bunx wrangler d1 execute <db> [--remote|--local] --command "..."`.
+Run it with `bun run wrangler d1 execute <db> [--remote|--local] --command "..."`.
 The remote staging database has this row; production still needs it. Local
 databases live in `.wrangler/state` and are per-machine, so each clone that
 seeds from a dump rather than `db:local` has to record the baseline itself.
@@ -108,7 +108,7 @@ reachable on workers.dev.
 
 ```bash
 mkdir -p tmp    # tmp/ is gitignored and wrangler will not create it
-bunx wrangler d1 export photo-album --remote \
+bun run wrangler d1 export photo-album --remote \
   --table albums --table photos --table photo_versions \
   --table redirects --table comments --table plus_ones \
   --output tmp/staging-content.sql
@@ -120,7 +120,7 @@ fails on `UNIQUE constraint failed`. Clear the target first, keeping the
 `d1_migrations` baseline row:
 
 ```bash
-bunx wrangler d1 execute photo-album-staging --remote --yes --command "
+bun run wrangler d1 execute photo-album-staging --remote --yes --command "
   DROP TABLE IF EXISTS plus_ones;
   DROP TABLE IF EXISTS comments;
   DROP TABLE IF EXISTS redirects;
@@ -128,8 +128,8 @@ bunx wrangler d1 execute photo-album-staging --remote --yes --command "
   DROP TABLE IF EXISTS photos;
   DROP TABLE IF EXISTS albums;
 "
-bunx wrangler d1 execute photo-album-staging --remote --yes --file tmp/staging-content.sql
-bunx wrangler d1 execute photo-album-staging --remote --yes --command "
+bun run wrangler d1 execute photo-album-staging --remote --yes --file tmp/staging-content.sql
+bun run wrangler d1 execute photo-album-staging --remote --yes --command "
   INSERT OR IGNORE INTO d1_migrations(name) VALUES ('0000_careful_paladin.sql');
 "
 ```
@@ -145,7 +145,7 @@ If a staging database was previously seeded from a full production export, it
 still holds real `users` and `google_authorizations` rows; scrub them once:
 
 ```bash
-bunx wrangler d1 execute photo-album-staging --remote --yes --command "
+bun run wrangler d1 execute photo-album-staging --remote --yes --command "
   DELETE FROM google_authorizations; DELETE FROM users;
 "
 ```
