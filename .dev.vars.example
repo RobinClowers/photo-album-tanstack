@@ -8,15 +8,3 @@ GOOGLE_CLIENT_SECRET=
 # Random string used to encrypt the admin session cookie, e.g. `openssl rand -base64 48`
 SESSION_SECRET=
 
-# S3 key pair for the photo bucket (S3_BUCKET / AWS_REGION are vars in
-# wrangler.jsonc). Locally these should be the *staging* bucket's scoped
-# IAM user, never production keys; leave them unset and photo deletion in the
-# admin fails with a "Storage is not configured" error instead of touching S3.
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-
-# Optional: point local dev at MinIO or another S3-compatible server instead
-# of AWS (path-style addressing). Both are declared as vars in wrangler.jsonc
-# so these overrides reach the Worker; undeclared .dev.vars keys are dropped.
-# S3_BUCKET=photo-album-test
-# S3_ENDPOINT=http://127.0.0.1:9100

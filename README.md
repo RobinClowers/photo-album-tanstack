@@ -4,9 +4,9 @@ Photo album site at [photos.robinclowers.com](https://photos.robinclowers.com).
 A TanStack Start app on Cloudflare Workers with a D1 (SQLite) database, ported
 from the original Rails app in `~/src/photo-album`.
 
-Images are served from the public S3 bucket `robin-photos`, laid out as
-`<album-slug>/<size>/<filename>` where `size` is one of `original`,
-`mobile_sm`, `tablet`, or `desktop`.
+Images are served from the R2 bucket `robin-photos` via `img.robinclowers.com`,
+laid out as `<album-slug>/<size>/<filename>` where `size` is `original` or one
+of the variants `mobile_sm`, `mobile_lg`, `tablet`, `laptop`, `desktop`.
 
 ## Stack
 
@@ -42,9 +42,9 @@ Configuration lives in three places:
 
 - **Runtime `vars`** — non-secret values in `wrangler.jsonc`, mirrored under
   `env.staging` because named environments do not inherit them. Read from the
-  Worker's `Env` binding (`ADMIN_EMAILS`, `S3_BUCKET`, `AWS_REGION`,
-  `S3_ENDPOINT`). `.dev.vars` may override a var locally, but only keys that
-  are declared as a var or a required secret reach the Worker.
+  Worker's `Env` binding (`ADMIN_EMAILS`). `.dev.vars` may override a var
+  locally, but only keys that are declared as a var or a required secret
+  reach the Worker.
 - **Build-time `VITE_*`** — in `.env`, `.env.staging`, etc., inlined at build
   time and read via `import.meta.env` (e.g. `VITE_PHOTO_BASE_URL`).
 - **Secrets** — `.dev.vars` locally (gitignored; copy `.dev.vars.example`) and
@@ -58,34 +58,29 @@ in a `.env` file — copy `.env.example` to `.env` and fill it in.
 
 ## Storage
 
-Photos live in a public-read S3 bucket (`robin-photos` in production,
+Photos live in a Cloudflare R2 bucket (`robin-photos` in production,
 `robin-photos-staging` in staging), one object per size variant at
-`<album-slug>/<size>/<filename>`. `src/server/s3.ts` is a small client over
-[aws4fetch](https://github.com/mhart/aws4fetch): put (streaming, unsigned
-payload so bodies are never hashed in the Worker), head, get with byte ranges,
-list, and delete. `src/server/storage.ts` builds it from the Worker env, and
-`src/utils/photo.ts` owns the key layout shared with the public URL builders.
+`<album-slug>/<size>/<filename>`. Each bucket is served publicly through a
+custom domain (`img.robinclowers.com`, `img-staging.robinclowers.com`), which
+is what `VITE_PHOTO_BASE_URL` points at; `src/utils/photo.ts` owns the key
+layout shared by the public URL builders and the storage code.
 
-Credentials are the secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, a
-scoped IAM user for the one bucket. Locally, use the staging user's keys or
-point dev at MinIO:
-
-```bash
-docker run -d --name photo-album-minio -p 9100:9000 \
-  -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=<pick one> \
-  quay.io/minio/minio server /data
-# then in .dev.vars: AWS_ACCESS_KEY_ID/SECRET = the MinIO root user,
-# S3_BUCKET=<a bucket you created>, S3_ENDPOINT=http://127.0.0.1:9100
-```
-
-`bun run s3:smoke` round-trips an object against whatever `.dev.vars` points
-at (put, head, range get, list, anonymous read, delete) and exits non-zero if
-any step fails. To test the staging bucket with an SSO profile instead of
-static keys:
+The Worker reads and writes through the `PHOTOS` bucket binding.
+`src/server/storage.ts` wraps it in a small put / head / get / list / delete
+API so the rest of the code stays storage-agnostic. There are no storage
+credentials to manage: the binding is configured in `wrangler.jsonc`, and
+local dev gets an emulated bucket under `.wrangler/state`. To put a real
+object into the local bucket, for example an album's originals for a
+reprocess test:
 
 ```bash
-AWS_PROFILE=photo-album-staging S3_BUCKET=robin-photos-staging bun scripts/s3-smoke.ts
+bun run wrangler r2 object put robin-photos/<slug>/original/<file>.jpg --file <file>.jpg --local
 ```
+
+The same command without `--local` (and with the staging bucket name) seeds
+the staging bucket. The production bucket was filled once from the legacy S3
+bucket with Cloudflare's Super Slurper; the S3 bucket stays read-only until
+old links to it can be retired.
 
 ## Environments
 

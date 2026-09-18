@@ -36,23 +36,20 @@
     }
   ],
   "secrets": {
-    "required": [
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
-      "SESSION_SECRET",
-      "AWS_ACCESS_KEY_ID",
-      "AWS_SECRET_ACCESS_KEY"
-    ]
+    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
   },
   "vars": {
-    "ADMIN_EMAILS": "robin.clowers@gmail.com",
-    // Photo bucket; the public URL for it is VITE_PHOTO_BASE_URL in .env
-    "S3_BUCKET": "robin-photos",
-    "AWS_REGION": "us-east-1",
-    // Always empty when deployed. Declared so a local override in .dev.vars
-    // (e.g. MinIO) reaches the Worker: undeclared .dev.vars keys are dropped.
-    "S3_ENDPOINT": ""
+    "ADMIN_EMAILS": "robin.clowers@gmail.com"
   },
+  // Photo objects, <album-slug>/<size>/<filename>. Served publicly through the
+  // bucket's custom domain (VITE_PHOTO_BASE_URL); the Worker writes via the
+  // binding. Local dev uses an emulated bucket in .wrangler/state.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "robin-photos"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "photo_album",
@@ -71,17 +68,18 @@
         "required": [
           "GOOGLE_CLIENT_ID",
           "GOOGLE_CLIENT_SECRET",
-          "SESSION_SECRET",
-          "AWS_ACCESS_KEY_ID",
-          "AWS_SECRET_ACCESS_KEY"
+          "SESSION_SECRET"
         ]
       },
       "vars": {
-        "ADMIN_EMAILS": "robin.clowers@gmail.com",
-        "S3_BUCKET": "robin-photos-staging",
-        "AWS_REGION": "us-east-1",
-        "S3_ENDPOINT": ""
+        "ADMIN_EMAILS": "robin.clowers@gmail.com"
       },
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "robin-photos-staging"
+        }
+      ],
       "d1_databases": [
         {
           "binding": "photo_album",

@@ -1,13 +1,13 @@
 import type { Photo, PhotoVersion } from '@/db/schema'
 
 /**
- * Public base URL for photo objects. Build-time configurable per Vite mode
- * (see .env.staging) so staging can point at its own bucket. Normalized to
- * exactly one trailing slash so a configured value without one still works.
+ * Public base URL for photo objects: the R2 bucket's custom domain.
+ * Build-time configurable per Vite mode (see .env.staging) so staging reads
+ * from its own bucket. Normalized to exactly one trailing slash so a
+ * configured value without one still works.
  */
 export const BASE_PHOTO_PATH = (
-  import.meta.env.VITE_PHOTO_BASE_URL ||
-  'https://s3.amazonaws.com/robin-photos/'
+  import.meta.env.VITE_PHOTO_BASE_URL || 'https://img.robinclowers.com/'
 ).replace(/\/?$/, '/')
 
 export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
