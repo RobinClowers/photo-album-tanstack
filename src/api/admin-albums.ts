@@ -9,6 +9,7 @@ import {
   listAlbumsForAdmin,
   setAlbumPublished,
 } from '@/db/admin'
+import { uniqueConstraintColumns } from '@/db/errors'
 import { createAlbum, getPhoto, updateAlbum, updatePhoto } from '@/db/queries'
 import { CAPTION_MAX_LENGTH } from '@/utils/photo'
 import { SLUG_PATTERN } from '@/utils/slug'
@@ -50,11 +51,9 @@ async function withConstraintErrors<T>(
   try {
     return await fn()
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    if (message.includes('UNIQUE constraint failed: albums.slug')) {
-      throw slugTaken(value)
-    }
-    if (message.includes('UNIQUE constraint failed: albums.title')) {
+    const columns = uniqueConstraintColumns(err)
+    if (columns === 'albums.slug') throw slugTaken(value)
+    if (columns === 'albums.title') {
       throw new Error('An album with that title already exists')
     }
     throw err
