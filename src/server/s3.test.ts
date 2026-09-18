@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createS3Client, encodeObjectKey, S3Error, xmlEscape } from './s3'
+import {
+  createS3Client,
+  encodeObjectKey,
+  S3Error,
+  xmlEscape,
+  xmlUnescape,
+} from './s3'
 
 interface Captured {
   url: URL
@@ -175,6 +181,17 @@ describe('head and get', () => {
     expect(await s3.get('missing')).toBeNull()
   })
 
+  it('throws an S3Error when HEAD fails', async () => {
+    const { fetchImpl } = stubFetch(new Response(null, { status: 403 }))
+    const error = await client(fetchImpl)
+      .head('a/desktop/b.jpg')
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(S3Error)
+    expect((error as S3Error).status).toBe(403)
+    expect((error as S3Error).code).toBeNull()
+    expect((error as S3Error).message).toBe('S3 403 for a/desktop/b.jpg')
+  })
+
   it('forwards a Range header and returns the raw response', async () => {
     const { calls, fetchImpl } = stubFetch(
       new Response('exif-bytes', { status: 206 }),
@@ -240,6 +257,25 @@ describe('delete', () => {
     expect(calls[0]?.method).toBe('DELETE')
   })
 
+  it('reports the error body when DELETE fails', async () => {
+    const { fetchImpl } = stubFetch(
+      new Response(
+        '<Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>',
+        { status: 403 },
+      ),
+    )
+    const error = await client(fetchImpl)
+      .delete('trip/original/a.jpg')
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(S3Error)
+    expect((error as S3Error).status).toBe(403)
+    expect((error as S3Error).code).toBe('AccessDenied')
+    expect((error as S3Error).key).toBe('trip/original/a.jpg')
+    expect((error as S3Error).message).toBe(
+      'S3 403 AccessDenied for trip/original/a.jpg: Access Denied',
+    )
+  })
+
   it('sends a checksummed DeleteObjects body with unique keys', async () => {
     const { calls, fetchImpl } = stubFetch(
       new Response('<DeleteResult></DeleteResult>', { status: 200 }),
@@ -279,20 +315,22 @@ describe('delete', () => {
     expect(calls[1]?.body).not.toContain('<Key>k/999.jpg</Key>')
   })
 
-  it('surfaces per-key errors from a 200 response', async () => {
+  it('surfaces per-key errors from a 200 response, unescaping the key', async () => {
+    // DeleteObjects has no encoding-type, so S3 echoes the key XML-escaped.
     const { fetchImpl } = stubFetch(
       new Response(
-        '<DeleteResult><Error><Key>trip/original/a.jpg</Key><Code>AccessDenied</Code><Message>Access Denied</Message></Error></DeleteResult>',
+        '<DeleteResult><Error><Key>trip/original/a&amp;b.jpg</Key><Code>AccessDenied</Code><Message>Access Denied</Message></Error></DeleteResult>',
         { status: 200 },
       ),
     )
     const error = await client(fetchImpl)
-      .deleteObjects(['trip/original/a.jpg'])
+      .deleteObjects(['trip/original/a&b.jpg'])
       .catch((e: unknown) => e)
     expect(error).toBeInstanceOf(S3Error)
-    expect((error as S3Error).key).toBe('trip/original/a.jpg')
+    expect((error as S3Error).code).toBe('AccessDenied')
+    expect((error as S3Error).key).toBe('trip/original/a&b.jpg')
     expect((error as S3Error).message).toBe(
-      'S3 DeleteObjects failed for trip/original/a.jpg (AccessDenied): Access Denied',
+      'S3 DeleteObjects failed for trip/original/a&b.jpg (AccessDenied): Access Denied',
     )
   })
 })
@@ -300,5 +338,10 @@ describe('delete', () => {
 describe('xmlEscape', () => {
   it('escapes the characters that would break a DeleteObjects body', () => {
     expect(xmlEscape(`a&b<c>"d'e`)).toBe('a&amp;b&lt;c&gt;&quot;d&apos;e')
+  })
+
+  it('xmlUnescape reverses it and leaves other text alone', () => {
+    expect(xmlUnescape('a&amp;b&lt;c&gt;&quot;d&apos;e')).toBe(`a&b<c>"d'e`)
+    expect(xmlUnescape('plain &unknown; text')).toBe('plain &unknown; text')
   })
 })

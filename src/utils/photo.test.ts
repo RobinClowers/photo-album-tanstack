@@ -4,6 +4,7 @@ import {
   buildPhotoPath,
   buildPhotoSrcSet,
   type PhotoWithVersions,
+  photoObjectKeys,
 } from './photo'
 
 function version(
@@ -80,6 +81,34 @@ describe('buildPhotoSrcSet', () => {
   it('is undefined when only the original exists', () => {
     const p = photo([version({ size: 'original', width: 6000 })])
     expect(buildPhotoSrcSet(p)).toBeUndefined()
+  })
+})
+
+describe('photoObjectKeys', () => {
+  it('returns one key per version, deduplicated', () => {
+    const p = photo([
+      version({ size: 'original', filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: 'a.jpg' }),
+    ])
+    expect(photoObjectKeys(p, p.versions)).toEqual([
+      'bangkok/original/a.jpg',
+      'bangkok/desktop/a.jpg',
+    ])
+  })
+
+  it('skips versions missing a size or filename', () => {
+    const p = photo([
+      version({ size: null, filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: null }),
+      version({ size: 'mobile_sm', filename: 'a.jpg' }),
+    ])
+    expect(photoObjectKeys(p, p.versions)).toEqual(['bangkok/mobile_sm/a.jpg'])
+  })
+
+  it('returns nothing for a photo without a path', () => {
+    const p = { ...photo([version({ size: 'desktop' })]), path: null }
+    expect(photoObjectKeys(p, p.versions)).toEqual([])
   })
 })
 

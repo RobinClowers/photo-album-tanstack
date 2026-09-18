@@ -23,6 +23,24 @@ export function photoObjectKey(path: string, size: string, filename: string) {
   return `${path}/${size}/${filename}`
 }
 
+/**
+ * Every object key a photo owns: one per `photo_versions` row (the original
+ * is stored as a version too). Rows missing a size or filename, or a photo
+ * with no path, yield nothing rather than a malformed key.
+ */
+export function photoObjectKeys(
+  photo: Pick<Photo, 'path'>,
+  versions: readonly Pick<PhotoVersion, 'size' | 'filename'>[],
+): string[] {
+  if (!photo.path) return []
+  const keys = new Set<string>()
+  for (const version of versions) {
+    if (!version.size || !version.filename) continue
+    keys.add(photoObjectKey(photo.path, version.size, version.filename))
+  }
+  return [...keys]
+}
+
 export function buildPhotoPath(
   photo: PhotoWithVersions | null | undefined,
   size: string,

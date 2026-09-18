@@ -1,15 +1,20 @@
 import { env } from 'cloudflare:workers'
-import type { Photo, PhotoVersion } from '@/db/schema'
-import { photoObjectKey } from '@/utils/photo'
 import { createS3Client, type S3Client } from './s3'
+
+let storage: S3Client | undefined
 
 /**
  * The photo bucket for the current environment. Bucket, region and the
  * (normally empty) endpoint override are `vars` in wrangler.jsonc; the key
  * pair is a per-environment secret. Locally, .dev.vars can override any of
  * them, which is how dev is pointed at MinIO (see .dev.vars.example).
+ *
+ * Built once per isolate: `env` is fixed for the isolate's lifetime, and the
+ * client caches its derived SigV4 signing key, which a fresh client per
+ * request would throw away.
  */
 export function getStorage(): S3Client {
+  if (storage) return storage
   const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET } =
     env
   if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
@@ -19,29 +24,12 @@ export function getStorage(): S3Client {
   }
   // Typed as the literal "" from wrangler.jsonc; widen so an override counts.
   const endpoint: string = env.S3_ENDPOINT
-  return createS3Client({
+  storage = createS3Client({
     bucket: S3_BUCKET,
     region: AWS_REGION,
     accessKeyId: AWS_ACCESS_KEY_ID,
     secretAccessKey: AWS_SECRET_ACCESS_KEY,
     endpoint: endpoint || undefined,
   })
-}
-
-/**
- * Every object key a photo owns: one per `photo_versions` row (the original
- * is stored as a version too). Rows missing a size or filename, or a photo
- * with no path, yield nothing rather than a malformed key.
- */
-export function photoObjectKeys(
-  photo: Pick<Photo, 'path'>,
-  versions: readonly Pick<PhotoVersion, 'size' | 'filename'>[],
-): string[] {
-  if (!photo.path) return []
-  const keys = new Set<string>()
-  for (const version of versions) {
-    if (!version.size || !version.filename) continue
-    keys.add(photoObjectKey(photo.path, version.size, version.filename))
-  }
-  return [...keys]
+  return storage
 }

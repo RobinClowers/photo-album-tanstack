@@ -60,7 +60,7 @@ export class S3Error extends Error {
 
   constructor(
     message: string,
-    options: { status: number; code: string | null; key?: string },
+    options: { status: number; code: string | null; key?: string | undefined },
   ) {
     super(message)
     this.name = 'S3Error'
@@ -89,10 +89,23 @@ export function xmlEscape(text: string): string {
   return text.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] ?? c)
 }
 
+const XML_UNESCAPES: Record<string, string> = Object.fromEntries(
+  Object.entries(XML_ESCAPES).map(([char, entity]) => [entity, char]),
+)
+
+/** Inverse of `xmlEscape`, for the keys and messages S3 echoes back escaped. */
+export function xmlUnescape(text: string): string {
+  return text.replace(
+    /&(?:amp|lt|gt|quot|apos);/g,
+    (e) => XML_UNESCAPES[e] ?? e,
+  )
+}
+
 /**
- * Raw text of the first `<tag>` in `xml`, or null. Not entity-decoded: the
- * only values read from S3 responses are keys (requested URL-encoded, see
- * `list`), numbers, dates and error codes, none of which S3 escapes.
+ * Raw text of the first `<tag>` in `xml`, or null. Not entity-decoded: list
+ * keys are requested URL-encoded (see `list`) and numbers, dates and error
+ * codes are never escaped. Error `Key`/`Message` text can be, so the error
+ * paths run those through `xmlUnescape`.
  */
 function xmlTag(xml: string, tag: string): string | null {
   const match = new RegExp(`<${tag}>([^<]*)</${tag}>`).exec(xml)
@@ -123,8 +136,8 @@ async function errorFromResponse(
   const message = xmlTag(body, 'Message')
   const where = key ? ` for ${key}` : ''
   return new S3Error(
-    `S3 ${res.status}${code ? ` ${code}` : ''}${where}${message ? `: ${message}` : ''}`,
-    { status: res.status, code, ...(key === undefined ? {} : { key }) },
+    `S3 ${res.status}${code ? ` ${code}` : ''}${where}${message ? `: ${xmlUnescape(message)}` : ''}`,
+    { status: res.status, code, key },
   )
 }
 
@@ -210,9 +223,12 @@ export function createS3Client(config: S3Config) {
 
   async function head(key: string): Promise<S3ObjectInfo | null> {
     const res = await send(objectUrl(key), { method: 'HEAD' })
-    await res.body?.cancel()
-    if (res.status === 404) return null
+    if (res.status === 404) {
+      await res.body?.cancel()
+      return null
+    }
     if (!res.ok) throw await errorFromResponse(res, key)
+    await res.body?.cancel()
     return {
       key,
       size: Number(res.headers.get('content-length') ?? 0),
@@ -253,7 +269,7 @@ export function createS3Client(config: S3Config) {
     const objects: S3ObjectInfo[] = []
     let continuationToken: string | null = null
     do {
-      const url = new URL(bucketUrl.endsWith('/') ? bucketUrl : `${bucketUrl}/`)
+      const url = new URL(`${bucketUrl}/`)
       url.searchParams.set('list-type', '2')
       url.searchParams.set('encoding-type', 'url')
       url.searchParams.set('prefix', prefix)
@@ -286,8 +302,9 @@ export function createS3Client(config: S3Config) {
   /** Delete one object. Deleting a missing key is not an error. */
   async function deleteObject(key: string): Promise<void> {
     const res = await send(objectUrl(key), { method: 'DELETE' })
-    await res.body?.cancel()
+    // Decide before discarding the body: a cancelled body reads back as ''.
     if (!res.ok && res.status !== 404) throw await errorFromResponse(res, key)
+    await res.body?.cancel()
   }
 
   /**
@@ -318,11 +335,14 @@ export function createS3Client(config: S3Config) {
       const xml = await res.text()
       const [failure] = xmlElements(xml, 'Error')
       if (failure !== undefined) {
-        const key = xmlTag(failure, 'Key') ?? undefined
+        // No encoding-type on DeleteObjects, so S3 XML-escapes the echoed key.
+        const rawKey = xmlTag(failure, 'Key')
+        const key = rawKey === null ? undefined : xmlUnescape(rawKey)
         const code = xmlTag(failure, 'Code')
+        const message = xmlTag(failure, 'Message')
         throw new S3Error(
-          `S3 DeleteObjects failed${key ? ` for ${key}` : ''}${code ? ` (${code})` : ''}: ${xmlTag(failure, 'Message') ?? 'unknown error'}`,
-          { status: res.status, code, ...(key === undefined ? {} : { key }) },
+          `S3 DeleteObjects failed${key ? ` for ${key}` : ''}${code ? ` (${code})` : ''}: ${message ? xmlUnescape(message) : 'unknown error'}`,
+          { status: res.status, code, key },
         )
       }
     }

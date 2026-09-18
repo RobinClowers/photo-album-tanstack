@@ -17,8 +17,8 @@ import {
   updateAlbum,
   updatePhoto,
 } from '@/db/queries'
-import { getStorage, photoObjectKeys } from '@/server/storage'
-import { CAPTION_MAX_LENGTH } from '@/utils/photo'
+import { getStorage } from '@/server/storage'
+import { CAPTION_MAX_LENGTH, photoObjectKeys } from '@/utils/photo'
 import { SLUG_PATTERN } from '@/utils/slug'
 import { requireAdmin } from './auth'
 
