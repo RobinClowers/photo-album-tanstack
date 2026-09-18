@@ -6,6 +6,16 @@ import {
   getAlbumsWithCoverPhoto,
   getPhotosWithAlbum,
 } from '@/db/queries'
+import { getCurrentAdmin } from '@/server/auth'
+
+/**
+ * Unpublished albums are drafts, reachable by URL only for the signed-in
+ * admin (so they can preview before publishing). Cheap for anonymous
+ * visitors: `getCurrentAdmin` returns early when there is no session cookie.
+ */
+async function canSeeUnpublished() {
+  return (await getCurrentAdmin()) !== null
+}
 
 export const getAllAlbums = createServerFn({
   method: 'GET',
@@ -37,7 +47,7 @@ export const getAlbumDetails = createServerFn({
   .inputValidator((data: { slug: string }) => data)
   .handler(async ({ data }) => {
     const db = createDB(env.photo_album)
-    return await getAlbumDetailsQuery(db, data.slug)
+    return await getAlbumDetailsQuery(db, data.slug, await canSeeUnpublished())
   })
 
 export const getPhotoDetailsFn = createServerFn({
@@ -47,5 +57,10 @@ export const getPhotoDetailsFn = createServerFn({
   .handler(async ({ data }) => {
     const db = createDB(env.photo_album)
     const { getPhotoBySlugAndFilename } = await import('@/db/queries')
-    return await getPhotoBySlugAndFilename(db, data.slug, data.filename)
+    return await getPhotoBySlugAndFilename(
+      db,
+      data.slug,
+      data.filename,
+      await canSeeUnpublished(),
+    )
   })

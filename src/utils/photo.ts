@@ -1,8 +1,19 @@
 import type { Photo, PhotoVersion } from '@/db/schema'
 
-export const BASE_PHOTO_PATH = 'https://s3.amazonaws.com/robin-photos/'
+/**
+ * Public base URL for photo objects. Build-time configurable per Vite mode
+ * (see .env.staging) so staging can point at its own bucket. Normalized to
+ * exactly one trailing slash so a configured value without one still works.
+ */
+export const BASE_PHOTO_PATH = (
+  import.meta.env.VITE_PHOTO_BASE_URL ||
+  'https://s3.amazonaws.com/robin-photos/'
+).replace(/\/?$/, '/')
 
 export type PhotoWithVersions = Photo & { versions: PhotoVersion[] }
+
+/** Shared by the caption input and the server-side caption validator. */
+export const CAPTION_MAX_LENGTH = 2000
 
 export function buildPhotoPath(
   photo: PhotoWithVersions | null | undefined,

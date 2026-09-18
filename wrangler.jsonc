@@ -1,6 +1,18 @@
 /**
- * For more details on how to configure Wrangler, refer to:
+ * Wrangler configuration.
  * https://developers.cloudflare.com/workers/wrangler/configuration/
+ *
+ * Two environments:
+ *   - top level: production, served at photos.robinclowers.com
+ *   - "staging": deployed with `bun run deploy:staging` to a workers.dev URL,
+ *     backed by its own D1 database (a copy of production data).
+ *
+ * Bindings (d1_databases, vars, secrets, queues, ...) are NOT inherited by
+ * named environments, so anything added at the top level must be mirrored
+ * under env.staging. Secrets are set per environment with
+ * `wrangler secret put NAME [--env staging]` and read locally from .dev.vars;
+ * listing them under `secrets.required` keeps `wrangler types` deterministic
+ * instead of inferring them from whatever .dev.vars happens to be on disk.
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -8,48 +20,59 @@
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false
+    }
+  },
   "routes": [
     {
       "pattern": "photos.robinclowers.com",
       "custom_domain": true
     }
   ],
-  "observability": {
-    "enabled": true
+  "secrets": {
+    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
+  },
+  "vars": {
+    "ADMIN_EMAILS": "robin.clowers@gmail.com"
   },
   "d1_databases": [
     {
       "binding": "photo_album",
       "database_name": "photo-album",
-      "database_id": "a4770c33-29a8-46c4-8b79-f9de04296754"
+      "database_id": "a4770c33-29a8-46c4-8b79-f9de04296754",
+      "migrations_dir": "drizzle"
     }
-  ]
-  /**
-   * Smart Placement
-   * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-   */
-  // "placement": {  "mode": "smart" }
-  /**
-   * Bindings
-   * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-   * databases, object storage, AI inference, real-time communication and more.
-   * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-   */
-  /**
-   * Environment Variables
-   * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-   * Note: Use secrets to store sensitive data.
-   * https://developers.cloudflare.com/workers/configuration/secrets/
-   */
-  // "vars": {  "MY_VARIABLE": "production_value" }
-  /**
-   * Static Assets
-   * https://developers.cloudflare.com/workers/static-assets/binding/
-   */
-  // "assets": {  "directory": "./public/",  "binding": "ASSETS" }
-  /**
-   * Service Bindings (communicate between multiple Workers)
-   * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
-   */
-  // "services": [  {   "binding": "MY_SERVICE",   "service": "my-service"  } ]
+  ],
+  "env": {
+    "staging": {
+      "name": "photo-album-tanstack-staging",
+      // routes ARE inherited; clear them so staging never claims the custom domain
+      "routes": [],
+      "workers_dev": true,
+      "secrets": {
+        "required": [
+          "GOOGLE_CLIENT_ID",
+          "GOOGLE_CLIENT_SECRET",
+          "SESSION_SECRET"
+        ]
+      },
+      "vars": {
+        "ADMIN_EMAILS": "robin.clowers@gmail.com"
+      },
+      "d1_databases": [
+        {
+          "binding": "photo_album",
+          "database_name": "photo-album-staging",
+          "database_id": "ff34cff0-f26c-496f-8bc6-7864c2e6906b",
+          "migrations_dir": "drizzle"
+        }
+      ]
+    }
+  }
 }

@@ -1,0 +1,9 @@
+# Local secrets for `bun run dev`. Copy to .dev.vars (gitignored).
+# Deployed environments get these via `wrangler secret put NAME [--env staging]`.
+
+# Google OAuth web client (Google Cloud console > Google Auth Platform > Clients)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Random string used to encrypt the admin session cookie, e.g. `openssl rand -base64 48`
+SESSION_SECRET=
