@@ -11,7 +11,7 @@ import {
   VARIANT_MIME_TYPE,
   VARIANT_QUALITY,
 } from '@/server/images/sizes'
-import type { S3Client } from '@/server/s3'
+import type { Storage } from '@/server/storage'
 import { variantFilename } from '@/utils/filename'
 import { photoObjectKey } from '@/utils/photo'
 
@@ -20,7 +20,7 @@ export const MAX_SOURCE_BYTES = 20 * 1024 * 1024
 
 export interface PipelineDeps {
   db: DB
-  storage: S3Client
+  storage: Storage
   images: ImagesBinding
 }
 

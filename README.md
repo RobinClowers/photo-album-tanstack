@@ -108,9 +108,10 @@ originals over 20 MB (the Images input limit) are reported as failed items.
 EXIF (camera, exposure, taken-at, GPS) is read with exifr from the original and
 fills in empty `photos` columns; a forced reprocess overwrites them.
 
-Local dev runs the queue consumer and a low-fidelity Images binding (resize
-only) in workerd, so the whole loop works against MinIO. Trigger the sweeper
-by hand with:
+Local dev runs the queue consumer, a low-fidelity Images binding (resize
+only) and an emulated R2 bucket in workerd, so the whole loop works offline
+once an album's originals are put into the local bucket (see Storage).
+Trigger the sweeper by hand with:
 
 ```bash
 curl 'http://localhost:3000/cdn-cgi/handler/scheduled?cron=*/10+*+*+*+*'
