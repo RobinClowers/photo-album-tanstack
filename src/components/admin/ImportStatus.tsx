@@ -8,7 +8,7 @@ export function StatusChip({ status }: { status: string }) {
       ? 'success'
       : status === 'failed'
         ? 'error'
-        : status === 'processing'
+        : status === 'processing' || status === 'picking'
           ? 'info'
           : 'default'
   return <Chip size="small" label={status} color={color} variant="outlined" />

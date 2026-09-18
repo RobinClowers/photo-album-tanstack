@@ -117,6 +117,32 @@ Trigger the sweeper by hand with:
 curl 'http://localhost:3000/cdn-cgi/handler/scheduled?cron=*/10+*+*+*+*'
 ```
 
+### Importing from Google Photos
+
+The Google Photos Library API no longer lists a user's own albums, so imports
+go through the **Photos Picker API**: from an album page, "Import from Google
+Photos" opens Google's picker in a new tab, the admin chooses photos there,
+and the app polls the picking session until they are done. Picked items are
+deduplicated against the album (by Google id, then by scrubbed filename),
+videos and unsupported formats are skipped, and each remaining photo becomes
+an import item: the queue consumer downloads the original from Google into
+the bucket, creates the `photos` row from the Picker metadata, and runs the
+same variant generation as a reprocess. Originals over the Images size limit
+are stored as-is and Google supplies a resized copy for the variants.
+
+Google access is granted incrementally: the first import asks for the
+`photospicker.mediaitems.readonly` scope plus offline access, and the tokens
+are stored per user in `google_authorizations`, sealed with AES-GCM under the
+`TOKEN_ENCRYPTION_KEY` secret (32 random bytes, base64). Google's download
+links last about an hour; "Retry failed" on an import re-lists the picker
+session for fresh links first. If the Google Cloud OAuth app is left in
+"Testing" status its refresh tokens expire after seven days, and the admin
+simply reconnects from the album page.
+
+Google Cloud setup, once per project: enable the **Photos Picker API**, add
+the Picker scope to the OAuth consent screen, and keep the existing redirect
+URI (the connection flow reuses `/api/auth/google/callback`).
+
 Deployed environments need the queues to exist before the first deploy:
 
 ```bash

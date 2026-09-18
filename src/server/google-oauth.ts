@@ -86,6 +86,42 @@ export async function exchangeCode(params: {
   return (await res.json()) as TokenResponse
 }
 
+/**
+ * Trade a refresh token for a new access token. Google does not rotate the
+ * refresh token here, so the caller keeps the old one. A revoked or expired
+ * grant comes back as a 400 `invalid_grant`, surfaced as GoogleOAuthError.
+ */
+export async function refreshAccessToken(params: {
+  clientId: string
+  clientSecret: string
+  refreshToken: string
+}): Promise<TokenResponse> {
+  const body = new URLSearchParams({
+    client_id: params.clientId,
+    client_secret: params.clientSecret,
+    refresh_token: params.refreshToken,
+    grant_type: 'refresh_token',
+  })
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body,
+  })
+  if (!res.ok) {
+    throw new GoogleOAuthError(
+      'Google token refresh failed',
+      res.status,
+      await res.text(),
+    )
+  }
+  return (await res.json()) as TokenResponse
+}
+
+/** Whether a token response granted a given scope. */
+export function hasScope(tokens: { scope?: string }, scope: string): boolean {
+  return (tokens.scope ?? '').split(/\s+/).includes(scope)
+}
+
 export interface GoogleUserInfo {
   sub: string
   email?: string
@@ -125,6 +161,33 @@ export function stateCookieOptions(secure: boolean) {
     secure,
     sameSite: 'lax' as const,
   }
+}
+
+/**
+ * Second one-time cookie naming what the OAuth round trip is for. Absent for
+ * plain sign-in; `photos|<returnTo>` for the Google Photos connection.
+ */
+export const OAUTH_PURPOSE_COOKIE = 'oauth_purpose'
+
+const PHOTOS_PURPOSE = 'photos'
+
+/** Only admin-relative paths are accepted as a return target. */
+export function safeReturnTo(value: string | null | undefined): string {
+  return value && /^\/admin(\/[^\s]*)?$/.test(value) ? value : '/admin'
+}
+
+export function photosPurpose(returnTo: string | null | undefined): string {
+  return `${PHOTOS_PURPOSE}|${safeReturnTo(returnTo)}`
+}
+
+/** Parse the purpose cookie; null means an ordinary sign-in. */
+export function parsePurpose(
+  cookie: string | undefined,
+): { purpose: 'photos'; returnTo: string } | null {
+  if (!cookie) return null
+  const [purpose, returnTo] = cookie.split('|', 2)
+  if (purpose !== PHOTOS_PURPOSE) return null
+  return { purpose: 'photos', returnTo: safeReturnTo(returnTo) }
 }
 
 /** Absolute callback URL for the current origin (registered in Google). */

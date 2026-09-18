@@ -43,9 +43,21 @@ export interface ReprocessResult {
  * With `force` false, sizes that already have a photo_versions row are kept;
  * with `force` true every size is rebuilt and overwritten.
  */
+export interface ReprocessOptions {
+  photoId: number
+  force: boolean
+  /**
+   * Bytes to resize instead of the stored original, used when the original
+   * is above the Images input limit and a smaller copy came from Google.
+   * `originalDimensions` are recorded on the `original` version row and the
+   * photo when known, since the bytes here are not the original's.
+   */
+  source?: { bytes: ArrayBuffer; originalDimensions?: Dimensions | undefined }
+}
+
 export async function reprocessPhoto(
   deps: PipelineDeps,
-  options: { photoId: number; force: boolean },
+  options: ReprocessOptions,
 ): Promise<ReprocessResult> {
   const { db, storage, images } = deps
   const photo = await getPhotoWithVersions(db, options.photoId)
@@ -68,21 +80,26 @@ export async function reprocessPhoto(
     return { generated: [], kept: [...PHOTO_SIZE_NAMES], tooSmall: [] }
   }
 
-  const originalKey = photoObjectKey(path, ORIGINAL_SIZE, filename)
-  const original = await storage.get(originalKey)
-  if (!original)
-    throw new Error(`Original not found in storage: ${originalKey}`)
-  const declared = Number(original.headers.get('content-length') ?? 0)
-  if (declared > MAX_SOURCE_BYTES) {
-    await original.body?.cancel()
-    throw new Error(
-      `Original is ${(declared / 1024 / 1024).toFixed(1)} MB, above the 20 MB Images limit`,
-    )
+  let bytes: ArrayBuffer
+  if (options.source) {
+    bytes = options.source.bytes
+  } else {
+    const originalKey = photoObjectKey(path, ORIGINAL_SIZE, filename)
+    const original = await storage.get(originalKey)
+    if (!original)
+      throw new Error(`Original not found in storage: ${originalKey}`)
+    const declared = Number(original.headers.get('content-length') ?? 0)
+    if (declared > MAX_SOURCE_BYTES) {
+      await original.body?.cancel()
+      throw new Error(
+        `Original is ${(declared / 1024 / 1024).toFixed(1)} MB, above the 20 MB Images limit`,
+      )
+    }
+    bytes = await original.arrayBuffer()
   }
-  const bytes = await original.arrayBuffer()
   if (bytes.byteLength > MAX_SOURCE_BYTES) {
     throw new Error(
-      `Original is ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB, above the 20 MB Images limit`,
+      `Source is ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB, above the 20 MB Images limit`,
     )
   }
   // One Blob feeds every Images call: constructing a Blob copies its bytes,
@@ -104,9 +121,14 @@ export async function reprocessPhoto(
   }
   // Stored pixel dimensions; the displayed image is rotated when EXIF says
   // so, and the Images service applies that rotation to every variant.
-  const dimensions: Dimensions = isRotated(exif?.orientation ?? null)
+  const sourceDimensions: Dimensions = isRotated(exif?.orientation ?? null)
     ? { width: info.height, height: info.width }
     : { width: info.width, height: info.height }
+  // Variants are planned from the bytes at hand; the original row records
+  // the true original when a resized stand-in is being processed.
+  const dimensions = sourceDimensions
+  const originalDimensions =
+    options.source?.originalDimensions ?? sourceDimensions
 
   const now = new Date().toISOString()
   const planned = planVariants(dimensions)
@@ -153,12 +175,19 @@ export async function reprocessPhoto(
     photoId: photo.id,
     size: ORIGINAL_SIZE,
     filename,
-    mimeType: info.format,
-    width: dimensions.width,
-    height: dimensions.height,
+    mimeType: options.source ? (photo.mimeType ?? info.format) : info.format,
+    width: originalDimensions.width,
+    height: originalDimensions.height,
     now,
   })
-  await backfillPhoto(db, photo, dimensions, info.format, exif, options.force)
+  await backfillPhoto(
+    db,
+    photo,
+    originalDimensions,
+    options.source ? (photo.mimeType ?? info.format) : info.format,
+    exif,
+    options.force,
+  )
   return result
 }
 

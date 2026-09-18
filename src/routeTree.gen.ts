@@ -20,6 +20,7 @@ import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as AlbumsSlugFilenameRouteImport } from './routes/albums.$slug_.$filename'
 import { Route as AdminImportsIdRouteImport } from './routes/admin.imports.$id'
 import { Route as AdminAlbumsIdRouteImport } from './routes/admin.albums.$id'
+import { Route as ApiAuthGooglePhotosRouteImport } from './routes/api/auth/google/photos'
 import { Route as ApiAuthGoogleLoginRouteImport } from './routes/api/auth/google/login'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
 
@@ -78,6 +79,11 @@ const AdminAlbumsIdRoute = AdminAlbumsIdRouteImport.update({
   path: '/albums/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiAuthGooglePhotosRoute = ApiAuthGooglePhotosRouteImport.update({
+  id: '/api/auth/google/photos',
+  path: '/api/auth/google/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthGoogleLoginRoute = ApiAuthGoogleLoginRouteImport.update({
   id: '/api/auth/google/login',
   path: '/api/auth/google/login',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/admin/imports/': typeof AdminImportsIndexRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
+  '/api/auth/google/photos': typeof ApiAuthGooglePhotosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/admin/imports': typeof AdminImportsIndexRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
+  '/api/auth/google/photos': typeof ApiAuthGooglePhotosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/admin/imports/': typeof AdminImportsIndexRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
   '/api/auth/google/login': typeof ApiAuthGoogleLoginRoute
+  '/api/auth/google/photos': typeof ApiAuthGooglePhotosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/admin/imports/'
     | '/api/auth/google/callback'
     | '/api/auth/google/login'
+    | '/api/auth/google/photos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/admin/imports'
     | '/api/auth/google/callback'
     | '/api/auth/google/login'
+    | '/api/auth/google/photos'
   id:
     | '__root__'
     | '/'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/imports/'
     | '/api/auth/google/callback'
     | '/api/auth/google/login'
+    | '/api/auth/google/photos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -191,6 +203,7 @@ export interface RootRouteChildren {
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthGoogleLoginRoute: typeof ApiAuthGoogleLoginRoute
+  ApiAuthGooglePhotosRoute: typeof ApiAuthGooglePhotosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlbumsIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/auth/google/photos': {
+      id: '/api/auth/google/photos'
+      path: '/api/auth/google/photos'
+      fullPath: '/api/auth/google/photos'
+      preLoaderRoute: typeof ApiAuthGooglePhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/google/login': {
       id: '/api/auth/google/login'
       path: '/api/auth/google/login'
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthGoogleLoginRoute: ApiAuthGoogleLoginRoute,
+  ApiAuthGooglePhotosRoute: ApiAuthGooglePhotosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

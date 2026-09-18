@@ -12,6 +12,7 @@ import { type ImportItem, imports } from '@/db/schema'
 import { createStorage } from '@/server/storage'
 import { chunk } from '@/utils/chunk'
 import { finalizeAlbum } from './finalize'
+import { importGooglePhoto, isPermanentError } from './google-import'
 import { parseImportItemPayload } from './items'
 import { type PipelineDeps, reprocessPhoto } from './process-photo'
 import { MAX_ATTEMPTS, retryDelaySeconds } from './retry'
@@ -93,7 +94,7 @@ export async function processQueueMessage(
     message.ack()
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error)
-    const final = item.attempts >= MAX_ATTEMPTS
+    const final = item.attempts >= MAX_ATTEMPTS || isPermanentError(error)
     await markImportItemFailed(deps.db, item.id, text, { final })
     console.error(
       `[pipeline] item ${item.id} attempt ${item.attempts} failed${final ? ' (final)' : ''}: ${text}`,
@@ -113,6 +114,8 @@ async function runItem(deps: PipelineDeps, item: ImportItem) {
         photoId: payload.photoId,
         force: payload.force,
       })
+    case 'google-import':
+      return importGooglePhoto(deps, item, payload)
   }
 }
 

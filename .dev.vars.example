@@ -8,3 +8,7 @@ GOOGLE_CLIENT_SECRET=
 # Random string used to encrypt the admin session cookie, e.g. `openssl rand -base64 48`
 SESSION_SECRET=
 
+# 32 random bytes, base64, sealing the Google Photos tokens stored in D1:
+# `openssl rand -base64 32`. Rotating it disconnects Google Photos for every
+# admin (they reconnect from the album page).
+TOKEN_ENCRYPTION_KEY=

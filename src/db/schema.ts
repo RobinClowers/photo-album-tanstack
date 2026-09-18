@@ -178,23 +178,30 @@ export const users = sqliteTable(
   }),
 )
 
+/**
+ * One Google OAuth grant per user for the Photos Picker scope. The tokens
+ * (access, refresh, expiry) are one AES-GCM sealed JSON blob, see
+ * src/server/token-crypto.ts. Rebuilt from the Rails attr_encrypted layout in
+ * migration 0003; the legacy rows were unreadable without the Rails keys.
+ */
 export const googleAuthorizations = sqliteTable(
   'google_authorizations',
   {
-    id: integer('id').notNull(),
-    scope: text('scope'),
-    tokenType: text('token_type'),
-    encryptedAccessToken: text('encrypted_access_token'),
-    encryptedAccessTokenIv: text('encrypted_access_token_iv'),
-    encryptedRefreshToken: text('encrypted_refresh_token'),
-    encryptedRefreshTokenIv: text('encrypted_refresh_token_iv'),
-    expiresAt: text('expires_at'),
-    userId: integer('user_id'),
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id').notNull(),
+    /** Space-separated scopes Google reported as granted. */
+    scope: text('scope').notNull(),
+    /** Sealed JSON: { accessToken, refreshToken, expiresAt }. */
+    encryptedTokens: text('encrypted_tokens').notNull(),
+    /** Access token expiry, ISO 8601; duplicated outside the blob for queries. */
+    expiresAt: text('expires_at').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({
-    userIdIdx: index('idx_google_authorizations_user_id').on(table.userId),
+    userIdIdx: uniqueIndex('idx_google_authorizations_user_id').on(
+      table.userId,
+    ),
   }),
 )
 

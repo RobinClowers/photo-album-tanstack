@@ -27,7 +27,17 @@ import {
 const D1_IN_LIST_CHUNK = 50
 
 export type ImportKind = 'reprocess' | 'google'
-export type ImportStatus = 'running' | 'done' | 'failed'
+/**
+ * picking: a Google Photos import waiting for the admin to finish choosing
+ * photos in Google's picker (no items yet). running: items queued. done /
+ * failed: every item finished. cancelled: abandoned while picking.
+ */
+export type ImportStatus =
+  | 'picking'
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'cancelled'
 export type ImportItemStatus = 'queued' | 'processing' | 'done' | 'failed'
 
 const now = () => new Date().toISOString()
@@ -93,36 +103,51 @@ export async function createImport(
     createdByUserId: number | null
     googleSessionId?: string | null
     googleSessionExpiresAt?: string | null
+    /** 'picking' keeps an empty Google import open; default 'running'. */
+    status?: 'running' | 'picking'
   },
   items: ImportItemInput[],
 ): Promise<{ import: Import; itemIds: number[] }> {
   const timestamp = now()
-  // An import with nothing to do is born finished; finishImport refuses to
-  // close an import with no items, so this is the only way one gets closed.
-  const empty = items.length === 0
+  // An import with nothing to do is born finished, unless it is waiting on
+  // the picker; finishImport refuses to close an import with no items, so
+  // this is the only way an empty one gets closed.
+  const status = data.status ?? 'running'
+  const finished = items.length === 0 && status === 'running'
   const [record] = await db
     .insert(imports)
     .values({
       albumId: data.albumId,
       kind: data.kind,
-      status: empty ? 'done' : 'running',
+      status: finished ? 'done' : status,
       createdByUserId: data.createdByUserId,
       googleSessionId: data.googleSessionId ?? null,
       googleSessionExpiresAt: data.googleSessionExpiresAt ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
-      finishedAt: empty ? timestamp : null,
+      finishedAt: finished ? timestamp : null,
     })
     .returning()
   if (!record) throw new Error('Failed to create import')
-  if (empty) return { import: record, itemIds: [] }
+  const itemIds = await insertImportItems(db, record.id, items)
+  return { import: record, itemIds }
+}
 
-  // One statement for every item, however many: D1 allows 100 bound
-  // parameters per statement (a multi-row VALUES insert binds eight per row)
-  // and the free plan 50 statements per invocation, so an album-sized batch
-  // cannot be inserted row by row or in slices. The rows travel as one JSON
-  // parameter instead and SQLite's json_each unpacks them; status and
-  // attempts take their column defaults.
+/**
+ * Add items to an import in one statement, however many: D1 allows 100 bound
+ * parameters per statement (a multi-row VALUES insert binds eight per row)
+ * and the free plan 50 statements per invocation, so an album-sized batch
+ * cannot be inserted row by row or in slices. The rows travel as one JSON
+ * parameter instead and SQLite's json_each unpacks them; status and
+ * attempts take their column defaults. Returns the new item ids.
+ */
+export async function insertImportItems(
+  db: DB,
+  importId: number,
+  items: ImportItemInput[],
+): Promise<number[]> {
+  if (items.length === 0) return []
+  const timestamp = now()
   const json = JSON.stringify(
     items.map((item) => ({
       photoId: item.photoId ?? null,
@@ -135,7 +160,7 @@ export async function createImport(
     insert into import_items
       (import_id, photo_id, filename, google_media_id, payload, created_at, updated_at)
     select
-      ${record.id},
+      ${importId},
       json_extract(value, '$.photoId'),
       json_extract(value, '$.filename'),
       json_extract(value, '$.googleMediaId'),
@@ -145,7 +170,60 @@ export async function createImport(
     from json_each(${json})
     returning id
   `)
-  return { import: record, itemIds: rows.map((r) => r.id) }
+  return rows.map((r) => r.id)
+}
+
+/** Move an import between states, e.g. picking → running or cancelled. */
+export async function setImportStatus(
+  db: DB,
+  importId: number,
+  status: ImportStatus,
+  extra: { error?: string | null } = {},
+): Promise<void> {
+  const timestamp = now()
+  const finished =
+    status === 'done' || status === 'failed' || status === 'cancelled'
+  await db
+    .update(imports)
+    .set({
+      status,
+      updatedAt: timestamp,
+      ...(extra.error !== undefined ? { error: extra.error } : {}),
+      ...(finished ? { finishedAt: timestamp } : {}),
+    })
+    .where(eq(imports.id, importId))
+}
+
+/** Point an existing item at the photo row the consumer created for it. */
+export async function setImportItemPhoto(
+  db: DB,
+  itemId: number,
+  photoId: number,
+): Promise<void> {
+  await db
+    .update(importItems)
+    .set({ photoId, updatedAt: now() })
+    .where(eq(importItems.id, itemId))
+}
+
+/** Replace an item's payload (e.g. with refreshed Google download URLs). */
+export async function setImportItemPayload(
+  db: DB,
+  itemId: number,
+  payload: string,
+): Promise<void> {
+  await db
+    .update(importItems)
+    .set({ payload, updatedAt: now() })
+    .where(eq(importItems.id, itemId))
+}
+
+/** Items of one import with their stored payloads, for re-listing a session. */
+export async function listImportItems(
+  db: DB,
+  importId: number,
+): Promise<ImportItem[]> {
+  return db.select().from(importItems).where(eq(importItems.importId, importId))
 }
 
 /** The import an item belongs to, or undefined if the item is gone. */

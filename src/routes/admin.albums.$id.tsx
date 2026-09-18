@@ -33,6 +33,7 @@ import {
   adminReprocessPhoto,
 } from '@/api/admin-imports'
 import { AlbumImports } from '@/components/admin/AlbumImports'
+import { GoogleImportDialog } from '@/components/admin/GoogleImportDialog'
 import { type AdminPhoto, PhotoTile } from '@/components/admin/PhotoTile'
 import { useAdminAction } from '@/components/admin/useAdminAction'
 import { usePollWhile } from '@/components/admin/usePollWhile'
@@ -40,7 +41,27 @@ import type { AdminAlbumDetails } from '@/db/admin'
 import { parseRecordId } from '@/utils/id'
 import { isValidSlug } from '@/utils/slug'
 
+/** `?google=` is set by the OAuth callback after connecting Google Photos. */
+const GOOGLE_RESULTS = ['connected', 'denied', 'wrong_account'] as const
+type GoogleResult = (typeof GOOGLE_RESULTS)[number]
+
+const GOOGLE_MESSAGES: Record<GoogleResult, string> = {
+  connected: 'Google Photos connected.',
+  denied: 'Google Photos access was not granted.',
+  wrong_account:
+    'That Google account is not the one you are signed in with here.',
+}
+
 export const Route = createFileRoute('/admin/albums/$id')({
+  // Optional so links to the album page never have to pass a search object.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { google?: GoogleResult } => {
+    const google = search.google
+    return GOOGLE_RESULTS.includes(google as GoogleResult)
+      ? { google: google as GoogleResult }
+      : {}
+  },
   loader: async ({ params }) => {
     // Anything that is not a plain positive integer is a not-found URL, not a
     // server error: '0'/'-1'/'1e300' would fail zod validation on the server
@@ -67,6 +88,13 @@ function AdminAlbumPage() {
   const { run, pending, error, clearError } = useAdminAction()
   const [toDelete, setToDelete] = useState<AdminPhoto | null>(null)
   const [reprocessMenu, setReprocessMenu] = useState<HTMLElement | null>(null)
+  const { google } = Route.useSearch()
+  // Connecting Google Photos round-trips through Google and lands back here;
+  // reopen the dialog so the admin can carry on where they left off.
+  const [googleOpen, setGoogleOpen] = useState(google === 'connected')
+  const [googleNotice, setGoogleNotice] = useState<string | null>(
+    google ? GOOGLE_MESSAGES[google] : null,
+  )
   const published = Boolean(album.publishedAt)
   usePollWhile(imports.some((i) => i.status === 'running'))
 
@@ -90,6 +118,14 @@ function AdminAlbumPage() {
             All albums
           </Button>
           <Box sx={{ flexGrow: 1 }} />
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={pending}
+            onClick={() => setGoogleOpen(true)}
+          >
+            Import from Google Photos
+          </Button>
           <Button
             size="small"
             endIcon={<ArrowDropDown />}
@@ -158,7 +194,7 @@ function AdminAlbumPage() {
           </Typography>
           {album.photos.length === 0 ? (
             <Typography color="text.secondary">
-              No photos yet. Importing from Google Photos arrives in a later PR.
+              No photos yet. Use "Import from Google Photos" to add some.
             </Typography>
           ) : (
             <Box
@@ -247,6 +283,25 @@ function AdminAlbumPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <GoogleImportDialog
+        albumId={album.id}
+        open={googleOpen}
+        onClose={() => setGoogleOpen(false)}
+      />
+
+      <Snackbar
+        open={Boolean(googleNotice)}
+        autoHideDuration={6000}
+        onClose={() => setGoogleNotice(null)}
+      >
+        <Alert
+          severity={google === 'connected' ? 'success' : 'warning'}
+          onClose={() => setGoogleNotice(null)}
+        >
+          {googleNotice}
+        </Alert>
+      </Snackbar>
 
       <Snackbar open={Boolean(error)} onClose={clearError}>
         <Alert severity="error" onClose={clearError}>

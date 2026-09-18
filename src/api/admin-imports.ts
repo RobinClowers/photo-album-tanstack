@@ -12,6 +12,7 @@ import {
 } from '@/db/imports'
 import { getAlbum, getPhoto } from '@/db/queries'
 import { photos } from '@/db/schema'
+import { refreshGoogleDownloadUrls } from '@/server/google-retry'
 import { serializeImportItemPayload } from '@/server/pipeline/items'
 import { enqueueItems } from '@/server/pipeline/queue'
 import { requireAdmin } from './auth'
@@ -102,7 +103,11 @@ export const adminRetryImport = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) => validate(z.object({ id }), input))
   .handler(async ({ data }) => {
-    if (!(await getImport(db(), data.id))) throw new Error('Import not found')
+    const record = await getImport(db(), data.id)
+    if (!record) throw new Error('Import not found')
+    // Google download links expire hourly; give the failed items fresh ones
+    // before they run again (no-op for reprocess imports).
+    await refreshGoogleDownloadUrls(db(), record)
     const itemIds = await resetFailedImportItems(db(), data.id)
     if (itemIds.length === 0) throw new Error('Nothing to retry')
     await enqueueItems(env.PHOTO_QUEUE, itemIds)

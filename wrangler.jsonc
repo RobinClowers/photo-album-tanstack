@@ -38,7 +38,12 @@
     }
   ],
   "secrets": {
-    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
+    "required": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "SESSION_SECRET",
+      "TOKEN_ENCRYPTION_KEY"
+    ]
   },
   "vars": {
     "ADMIN_EMAILS": "robin.clowers@gmail.com"
@@ -101,7 +106,8 @@
         "required": [
           "GOOGLE_CLIENT_ID",
           "GOOGLE_CLIENT_SECRET",
-          "SESSION_SECRET"
+          "SESSION_SECRET",
+          "TOKEN_ENCRYPTION_KEY"
         ]
       },
       "vars": {
