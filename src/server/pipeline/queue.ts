@@ -4,11 +4,13 @@ import { createDB, type DB } from '@/db'
 import {
   claimImportItem,
   finishImport,
+  getImportItemImportId,
   markImportItemDone,
   markImportItemFailed,
 } from '@/db/imports'
 import { type ImportItem, imports } from '@/db/schema'
 import { getStorage } from '@/server/storage'
+import { chunk } from '@/utils/chunk'
 import { finalizeAlbum } from './finalize'
 import { parseImportItemPayload } from './items'
 import { type PipelineDeps, reprocessPhoto } from './process-photo'
@@ -25,15 +27,9 @@ const SEND_BATCH_SIZE = 100
 export async function enqueueItems(
   queue: Queue<PhotoQueueMessage>,
   itemIds: readonly number[],
-  options: { delaySeconds?: number } = {},
 ): Promise<void> {
-  for (let i = 0; i < itemIds.length; i += SEND_BATCH_SIZE) {
-    await queue.sendBatch(
-      itemIds.slice(i, i + SEND_BATCH_SIZE).map((itemId) => ({
-        body: { itemId },
-        ...(options.delaySeconds ? { delaySeconds: options.delaySeconds } : {}),
-      })),
-    )
+  for (const slice of chunk(itemIds, SEND_BATCH_SIZE)) {
+    await queue.sendBatch(slice.map((itemId) => ({ body: { itemId } })))
   }
 }
 
@@ -57,10 +53,12 @@ export async function handlePhotoQueue(
 }
 
 /**
- * One message: claim the item, run it, record the outcome. Errors never
- * escape (an uncaught throw would make the platform retry the whole batch
- * with no D1 record of why); instead the item is re-queued with a delay
- * while attempts remain and marked failed after that.
+ * One message: claim the item, run it, record the outcome. A failure in the
+ * photo work never escapes (an uncaught throw would make the platform retry
+ * the batch with no D1 record of why); the item is re-queued with a delay
+ * while attempts remain and marked failed after that. Only a failure of the
+ * D1 bookkeeping itself propagates, leaving the platform retry as the
+ * fallback.
  */
 export async function processQueueMessage(
   deps: PipelineDeps,
@@ -74,8 +72,12 @@ export async function processQueueMessage(
   }
   const item = await claimImportItem(deps.db, itemId)
   if (!item) {
-    // Already done or deleted: a duplicate delivery.
+    // Already done or deleted: a duplicate delivery. The first delivery may
+    // have died between finishing the item and closing its import, so close
+    // it now rather than waiting for the sweeper.
     message.ack()
+    const importId = await getImportItemImportId(deps.db, itemId)
+    if (importId !== undefined) await closeImportIfFinished(deps.db, importId)
     return
   }
 

@@ -48,7 +48,7 @@ describe('parseExif', () => {
     const bytes = new Uint8Array([
       0xff, 0xd8, 0xff, 0xdb, 0, 4, 0, 0, 0xff, 0xd9,
     ])
-    expect(await parseExif(bytes).catch(() => null)).toBeNull()
+    expect(await parseExif(bytes)).toBeNull()
   })
 })
 
@@ -56,10 +56,12 @@ describe('formatExposureTime', () => {
   it('renders fractions of a second the way exiftool does', () => {
     expect(formatExposureTime(0.001)).toBe('1/1000')
     expect(formatExposureTime(0.0015625)).toBe('1/640')
-    expect(formatExposureTime(0.5)).toBe('1/2')
+    expect(formatExposureTime(0.25)).toBe('1/4')
   })
 
-  it('renders long exposures as seconds', () => {
+  it('switches to decimal seconds above a quarter second, like exiftool', () => {
+    expect(formatExposureTime(0.3)).toBe('0.3')
+    expect(formatExposureTime(0.5)).toBe('0.5')
     expect(formatExposureTime(2)).toBe('2')
     expect(formatExposureTime(1.3)).toBe('1.3')
   })

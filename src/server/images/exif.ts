@@ -116,13 +116,15 @@ export function formatExifDate(value: string | null): string | null {
 }
 
 /**
- * Seconds → the fraction photographers read: 0.001 → '1/1000', 0.5 → '1/2',
- * 2 → '2', 1.3 → '1.3'. Matches the exiftool strings the legacy rows hold.
+ * Seconds → the string exiftool prints, which is what the legacy rows hold:
+ * a fraction up to a quarter second (0.001 → '1/1000', 0.25 → '1/4') and
+ * decimal seconds above that (0.5 → '0.5', 1.3 → '1.3', 2 → '2').
  */
 export function formatExposureTime(seconds: number | null): string | null {
   if (seconds === null || seconds <= 0) return null
-  if (seconds >= 1) return String(Number(seconds.toFixed(1)))
-  return `1/${Math.round(1 / seconds)}`
+  // exiftool's PrintExposureTime threshold.
+  if (seconds < 0.25001) return `1/${Math.round(1 / seconds)}`
+  return String(Number(seconds.toFixed(1)))
 }
 
 /**

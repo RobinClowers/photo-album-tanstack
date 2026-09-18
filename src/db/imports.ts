@@ -1,4 +1,5 @@
 import { and, count, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { chunk } from '@/utils/chunk'
 import type { DB } from './index'
 import {
   type Import,
@@ -7,6 +8,13 @@ import {
   imports,
   type NewImportItem,
 } from './schema'
+
+/**
+ * D1 rejects a statement with more than 100 bound parameters, so `IN (...)`
+ * lists are split; the margin leaves room for the other values a statement
+ * binds.
+ */
+const D1_IN_LIST_CHUNK = 50
 
 export type ImportKind = 'reprocess' | 'google'
 export type ImportStatus = 'running' | 'done' | 'failed'
@@ -48,6 +56,20 @@ function rowsToCounts(rows: { status: string; n: number }[]): ImportCounts {
   return counts
 }
 
+export async function getImport(
+  db: DB,
+  id: number,
+): Promise<Import | undefined> {
+  const [record] = await db.select().from(imports).where(eq(imports.id, id))
+  return record
+}
+
+/** What a caller supplies per item; status, attempts and timestamps are set here. */
+export type ImportItemInput = Pick<
+  NewImportItem,
+  'photoId' | 'filename' | 'googleMediaId' | 'payload'
+>
+
 /**
  * Create an import with its items. Items are written without a queue message
  * yet; the caller enqueues the returned ids, so a failed send leaves rows the
@@ -62,7 +84,7 @@ export async function createImport(
     googleSessionId?: string | null
     googleSessionExpiresAt?: string | null
   },
-  items: Omit<NewImportItem, 'importId' | 'createdAt' | 'updatedAt'>[],
+  items: ImportItemInput[],
 ): Promise<{ import: Import; itemIds: number[] }> {
   const timestamp = now()
   const [record] = await db
@@ -82,30 +104,50 @@ export async function createImport(
 
   if (items.length === 0) {
     await finishImport(db, record.id)
-    const [finished] = await db
-      .select()
-      .from(imports)
-      .where(eq(imports.id, record.id))
-    return { import: finished ?? record, itemIds: [] }
+    return { import: (await getImport(db, record.id)) ?? record, itemIds: [] }
   }
 
-  // D1 caps bound parameters per statement, so insert in slices.
-  const itemIds: number[] = []
-  for (let i = 0; i < items.length; i += 50) {
-    const rows = await db
-      .insert(importItems)
-      .values(
-        items.slice(i, i + 50).map((item) => ({
-          ...item,
-          importId: record.id,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        })),
-      )
-      .returning({ id: importItems.id })
-    itemIds.push(...rows.map((r) => r.id))
-  }
-  return { import: record, itemIds }
+  // One statement for every item, however many: D1 allows 100 bound
+  // parameters per statement (a multi-row VALUES insert binds eight per row)
+  // and the free plan 50 statements per invocation, so an album-sized batch
+  // cannot be inserted row by row or in slices. The rows travel as one JSON
+  // parameter instead and SQLite's json_each unpacks them; status and
+  // attempts take their column defaults.
+  const json = JSON.stringify(
+    items.map((item) => ({
+      photoId: item.photoId ?? null,
+      filename: item.filename ?? null,
+      googleMediaId: item.googleMediaId ?? null,
+      payload: item.payload,
+    })),
+  )
+  const rows = await db.all<{ id: number }>(sql`
+    insert into import_items
+      (import_id, photo_id, filename, google_media_id, payload, created_at, updated_at)
+    select
+      ${record.id},
+      json_extract(value, '$.photoId'),
+      json_extract(value, '$.filename'),
+      json_extract(value, '$.googleMediaId'),
+      json_extract(value, '$.payload'),
+      ${timestamp},
+      ${timestamp}
+    from json_each(${json})
+    returning id
+  `)
+  return { import: record, itemIds: rows.map((r) => r.id) }
+}
+
+/** The import an item belongs to, or undefined if the item is gone. */
+export async function getImportItemImportId(
+  db: DB,
+  id: number,
+): Promise<number | undefined> {
+  const [row] = await db
+    .select({ importId: importItems.importId })
+    .from(importItems)
+    .where(eq(importItems.id, id))
+  return row?.importId
 }
 
 /**
@@ -262,11 +304,13 @@ export async function findStaleImportItems(
 
 /** Bump updated_at so the stale-item sweep does not pick these up again. */
 export async function touchImportItems(db: DB, ids: number[]): Promise<void> {
-  if (ids.length === 0) return
-  await db
-    .update(importItems)
-    .set({ updatedAt: now() })
-    .where(inArray(importItems.id, ids))
+  const timestamp = now()
+  for (const slice of chunk(ids, D1_IN_LIST_CHUNK)) {
+    await db
+      .update(importItems)
+      .set({ updatedAt: timestamp })
+      .where(inArray(importItems.id, slice))
+  }
 }
 
 export async function listRunningImportIds(db: DB): Promise<number[]> {

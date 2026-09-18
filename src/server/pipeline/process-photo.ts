@@ -85,12 +85,20 @@ export async function reprocessPhoto(
       `Original is ${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB, above the 20 MB Images limit`,
     )
   }
+  // One Blob feeds every Images call: constructing a Blob copies its bytes,
+  // while each stream() reads the same copy.
+  const blob = new Blob([bytes])
 
-  const info = await images.info(streamOf(bytes))
+  const info = await images.info(blob.stream())
   if (!('width' in info) || !info.width || !info.height) {
     throw new Error(`Could not read image dimensions (${info.format})`)
   }
-  const exif = await parseExif(bytes).catch(() => null)
+  // Best effort: a photo without readable EXIF is still resized, but a
+  // parser failure is logged so a systematic one is visible.
+  const exif = await parseExif(bytes).catch((error: unknown) => {
+    console.warn(`[pipeline] EXIF parse failed for photo ${photo.id}:`, error)
+    return null
+  })
   // Stored pixel dimensions; the displayed image is rotated when EXIF says
   // so, and the Images service applies that rotation to every variant.
   const dimensions: Dimensions = isRotated(exif?.orientation ?? null)
@@ -98,11 +106,12 @@ export async function reprocessPhoto(
     : { width: info.width, height: info.height }
 
   const now = new Date().toISOString()
-  const result: ReprocessResult = { generated: [], kept: [], tooSmall: [] }
   const planned = planVariants(dimensions)
   const plannedNames = new Set(planned.map((p) => p.size.name))
-  for (const { size } of planVariants({ width: 1e9, height: 1e9 })) {
-    if (!plannedNames.has(size.name)) result.tooSmall.push(size.name)
+  const result: ReprocessResult = {
+    generated: [],
+    kept: [],
+    tooSmall: PHOTO_SIZE_NAMES.filter((name) => !plannedNames.has(name)),
   }
 
   for (const variant of planned) {
@@ -111,7 +120,7 @@ export async function reprocessPhoto(
       continue
     }
     const output = await images
-      .input(streamOf(bytes))
+      .input(blob.stream())
       .transform({ height: variant.height, fit: 'scale-down' })
       .output({ format: VARIANT_MIME_TYPE, quality: VARIANT_QUALITY })
     // The transform result has no known length, so it is buffered for the
@@ -148,10 +157,6 @@ export async function reprocessPhoto(
   })
   await backfillPhoto(db, photo, dimensions, info.format, exif, options.force)
   return result
-}
-
-function streamOf(bytes: ArrayBuffer): ReadableStream<Uint8Array> {
-  return new Blob([bytes]).stream()
 }
 
 async function upsertVersion(

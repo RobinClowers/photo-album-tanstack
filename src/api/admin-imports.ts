@@ -2,9 +2,9 @@ import { env } from 'cloudflare:workers'
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { createDB } from '@/db'
 import {
   createImport,
+  getImport,
   getImportForAdmin,
   listImportsForAdmin,
   listImportsForAlbum,
@@ -15,15 +15,7 @@ import { photos } from '@/db/schema'
 import { serializeImportItemPayload } from '@/server/pipeline/items'
 import { enqueueItems } from '@/server/pipeline/queue'
 import { requireAdmin } from './auth'
-
-const id = z.number().int().positive()
-const db = () => createDB(env.photo_album)
-
-function validate<T extends z.ZodType>(schema: T, input: unknown): z.output<T> {
-  const result = schema.safeParse(input)
-  if (result.success) return result.data
-  throw new Error(result.error.issues[0]?.message ?? 'Invalid input')
-}
+import { db, id, validate } from './shared'
 
 /**
  * Queue a reprocess of the given photos as one import. Rows first, then
@@ -110,8 +102,7 @@ export const adminRetryImport = createServerFn({ method: 'POST' })
   .middleware([requireAdmin])
   .inputValidator((input: unknown) => validate(z.object({ id }), input))
   .handler(async ({ data }) => {
-    const record = await getImportForAdmin(db(), data.id)
-    if (!record) throw new Error('Import not found')
+    if (!(await getImport(db(), data.id))) throw new Error('Import not found')
     const itemIds = await resetFailedImportItems(db(), data.id)
     if (itemIds.length === 0) throw new Error('Nothing to retry')
     await enqueueItems(env.PHOTO_QUEUE, itemIds)

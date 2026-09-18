@@ -67,7 +67,7 @@
   },
   // One message per import item. Consumer runs one message at a time with
   // modest concurrency so a run stays within the free-plan CPU allowance
-  // (see tmp/admin-port-plan.md §2.2a). Retries are driven from D1 state
+  // (see README, "Image pipeline"). Retries are driven from D1 state
   // (import_items.attempts), so the platform retry count is a backstop.
   "queues": {
     "producers": [
