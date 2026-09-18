@@ -1,4 +1,4 @@
-import { Delete, Star, StarBorder } from '@mui/icons-material'
+import { Delete, Refresh, Star, StarBorder } from '@mui/icons-material'
 import {
   Box,
   Card,
@@ -22,6 +22,7 @@ export function PhotoTile({
   onSaveCaption,
   onSetCover,
   onDelete,
+  onReprocess,
 }: {
   photo: AdminPhoto
   isCover: boolean
@@ -29,6 +30,7 @@ export function PhotoTile({
   onSaveCaption: (caption: string) => Promise<unknown>
   onSetCover: () => void
   onDelete: () => void
+  onReprocess: () => void
 }) {
   const saved = photo.caption ?? ''
   const [caption, setCaption] = useState(saved)
@@ -106,16 +108,28 @@ export function PhotoTile({
             {isCover ? <Star /> : <StarBorder />}
           </IconButton>
         </Tooltip>
-        <Tooltip title="Delete photo">
-          <IconButton
-            size="small"
-            onClick={onDelete}
-            disabled={disabled}
-            aria-label="Delete photo"
-          >
-            <Delete fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Box>
+          <Tooltip title="Regenerate size variants">
+            <IconButton
+              size="small"
+              onClick={onReprocess}
+              disabled={disabled}
+              aria-label="Regenerate size variants"
+            >
+              <Refresh fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete photo">
+            <IconButton
+              size="small"
+              onClick={onDelete}
+              disabled={disabled}
+              aria-label="Delete photo"
+            >
+              <Delete fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </CardActions>
     </Card>
   )

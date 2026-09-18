@@ -1,4 +1,4 @@
-import { ArrowBack, OpenInNew } from '@mui/icons-material'
+import { ArrowBack, ArrowDropDown, OpenInNew } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -9,6 +9,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Menu,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -25,8 +27,15 @@ import {
   adminUpdateAlbum,
   adminUpdatePhotoCaption,
 } from '@/api/admin-albums'
+import {
+  adminListAlbumImports,
+  adminReprocessAlbum,
+  adminReprocessPhoto,
+} from '@/api/admin-imports'
+import { AlbumImports } from '@/components/admin/AlbumImports'
 import { type AdminPhoto, PhotoTile } from '@/components/admin/PhotoTile'
 import { useAdminAction } from '@/components/admin/useAdminAction'
+import { usePollWhile } from '@/components/admin/usePollWhile'
 import type { AdminAlbumDetails } from '@/db/admin'
 import { parseRecordId } from '@/utils/id'
 import { isValidSlug } from '@/utils/slug'
@@ -37,9 +46,13 @@ export const Route = createFileRoute('/admin/albums/$id')({
     // server error: '0'/'-1'/'1e300' would fail zod validation on the server
     // and render a raw ZodError, and '0x10'/'1e2'/'1.0' would alias real ids.
     const id = parseRecordId(params.id)
-    const album = id === null ? null : await adminGetAlbum({ data: { id } })
+    if (id === null) throw notFound()
+    const [album, imports] = await Promise.all([
+      adminGetAlbum({ data: { id } }),
+      adminListAlbumImports({ data: { albumId: id } }),
+    ])
     if (!album) throw notFound()
-    return { album }
+    return { album, imports }
   },
   notFoundComponent: () => (
     <Container sx={{ py: 4 }}>
@@ -50,10 +63,19 @@ export const Route = createFileRoute('/admin/albums/$id')({
 })
 
 function AdminAlbumPage() {
-  const { album } = Route.useLoaderData()
+  const { album, imports } = Route.useLoaderData()
   const { run, pending, error, clearError } = useAdminAction()
   const [toDelete, setToDelete] = useState<AdminPhoto | null>(null)
+  const [reprocessMenu, setReprocessMenu] = useState<HTMLElement | null>(null)
   const published = Boolean(album.publishedAt)
+  usePollWhile(imports.some((i) => i.status === 'running'))
+
+  const reprocessAlbum = (force: boolean) => {
+    setReprocessMenu(null)
+    return run(() =>
+      adminReprocessAlbum({ data: { albumId: album.id, force } }),
+    )
+  }
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -68,6 +90,26 @@ function AdminAlbumPage() {
             All albums
           </Button>
           <Box sx={{ flexGrow: 1 }} />
+          <Button
+            size="small"
+            endIcon={<ArrowDropDown />}
+            disabled={pending || album.photos.length === 0}
+            onClick={(e) => setReprocessMenu(e.currentTarget)}
+          >
+            Reprocess variants
+          </Button>
+          <Menu
+            anchorEl={reprocessMenu}
+            open={Boolean(reprocessMenu)}
+            onClose={() => setReprocessMenu(null)}
+          >
+            <MenuItem onClick={() => reprocessAlbum(false)}>
+              Generate missing sizes only
+            </MenuItem>
+            <MenuItem onClick={() => reprocessAlbum(true)}>
+              Regenerate every size
+            </MenuItem>
+          </Menu>
           {published && album.slug && (
             <Button
               component="a"
@@ -151,11 +193,27 @@ function AdminAlbumPage() {
                     )
                   }
                   onDelete={() => setToDelete(photo)}
+                  onReprocess={() =>
+                    run(() =>
+                      adminReprocessPhoto({
+                        data: { photoId: photo.id, force: true },
+                      }),
+                    )
+                  }
                 />
               ))}
             </Box>
           )}
         </section>
+
+        {imports.length > 0 && (
+          <section>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Recent imports
+            </Typography>
+            <AlbumImports imports={imports} />
+          </section>
+        )}
       </Stack>
 
       <Dialog open={Boolean(toDelete)} onClose={() => setToDelete(null)}>

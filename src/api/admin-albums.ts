@@ -1,7 +1,5 @@
-import { env } from 'cloudflare:workers'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { createDB } from '@/db'
 import {
   deletePhotoRecord,
   getAlbumForAdmin,
@@ -21,8 +19,8 @@ import { getStorage } from '@/server/storage'
 import { CAPTION_MAX_LENGTH, photoObjectKeys } from '@/utils/photo'
 import { SLUG_PATTERN } from '@/utils/slug'
 import { requireAdmin } from './auth'
+import { db, id, validate } from './shared'
 
-const id = z.number().int().positive()
 const title = z.string().trim().min(1, 'Title is required').max(200)
 const slug = z
   .string()
@@ -30,18 +28,6 @@ const slug = z
   .min(1, 'Slug is required')
   .max(200)
   .regex(SLUG_PATTERN, 'Use lowercase letters, numbers and dashes')
-
-const db = () => createDB(env.photo_album)
-
-/**
- * Validation failures end up in a Snackbar, and `ZodError.message` is a JSON
- * dump of every issue, so surface just the first message.
- */
-function validate<T extends z.ZodType>(schema: T, input: unknown): z.output<T> {
-  const result = schema.safeParse(input)
-  if (result.success) return result.data
-  throw new Error(result.error.issues[0]?.message ?? 'Invalid input')
-}
 
 const slugTaken = (value: string) =>
   new Error(`An album with slug "${value}" already exists`)
