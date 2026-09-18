@@ -162,9 +162,9 @@ function AdminAlbumPage() {
         <DialogTitle>Delete photo?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Removes <strong>{toDelete?.filename}</strong> from this album, along
-            with its comments and plus ones. The image files stay in storage for
-            now.
+            Permanently removes <strong>{toDelete?.filename}</strong> from this
+            album, along with its comments, plus ones and every stored copy of
+            the image. This cannot be undone.
             {album.coverPhotoId === toDelete?.id &&
               (album.photos.length > 1
                 ? ' The earliest remaining photo becomes the cover.'

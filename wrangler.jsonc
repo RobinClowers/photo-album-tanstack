@@ -41,6 +41,15 @@
   "vars": {
     "ADMIN_EMAILS": "robin.clowers@gmail.com"
   },
+  // Photo objects, <album-slug>/<size>/<filename>. Served publicly through the
+  // bucket's custom domain (VITE_PHOTO_BASE_URL); the Worker writes via the
+  // binding. Local dev uses an emulated bucket in .wrangler/state.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "robin-photos"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "photo_album",
@@ -65,6 +74,12 @@
       "vars": {
         "ADMIN_EMAILS": "robin.clowers@gmail.com"
       },
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "robin-photos-staging"
+        }
+      ],
       "d1_databases": [
         {
           "binding": "photo_album",

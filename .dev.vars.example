@@ -7,3 +7,4 @@ GOOGLE_CLIENT_SECRET=
 
 # Random string used to encrypt the admin session cookie, e.g. `openssl rand -base64 48`
 SESSION_SECRET=
+
