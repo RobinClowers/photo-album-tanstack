@@ -36,10 +36,22 @@
     }
   ],
   "secrets": {
-    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
+    "required": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "SESSION_SECRET",
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY"
+    ]
   },
   "vars": {
-    "ADMIN_EMAILS": "robin.clowers@gmail.com"
+    "ADMIN_EMAILS": "robin.clowers@gmail.com",
+    // Photo bucket; the public URL for it is VITE_PHOTO_BASE_URL in .env
+    "S3_BUCKET": "robin-photos",
+    "AWS_REGION": "us-east-1",
+    // Always empty when deployed. Declared so a local override in .dev.vars
+    // (e.g. MinIO) reaches the Worker: undeclared .dev.vars keys are dropped.
+    "S3_ENDPOINT": ""
   },
   "d1_databases": [
     {
@@ -59,11 +71,16 @@
         "required": [
           "GOOGLE_CLIENT_ID",
           "GOOGLE_CLIENT_SECRET",
-          "SESSION_SECRET"
+          "SESSION_SECRET",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY"
         ]
       },
       "vars": {
-        "ADMIN_EMAILS": "robin.clowers@gmail.com"
+        "ADMIN_EMAILS": "robin.clowers@gmail.com",
+        "S3_BUCKET": "robin-photos-staging",
+        "AWS_REGION": "us-east-1",
+        "S3_ENDPOINT": ""
       },
       "d1_databases": [
         {

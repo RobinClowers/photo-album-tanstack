@@ -152,6 +152,13 @@ export async function getPhoto(db: DB, id: number): Promise<Photo | undefined> {
   return photo
 }
 
+export async function getPhotoWithVersions(db: DB, id: number) {
+  return db.query.photos.findFirst({
+    where: eq(photos.id, id),
+    with: { versions: true },
+  })
+}
+
 export async function createPhoto(db: DB, data: NewPhoto): Promise<Photo> {
   const [photo] = await db.insert(photos).values(data).returning()
   if (!photo) throw new Error('Failed to create photo')

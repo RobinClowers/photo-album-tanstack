@@ -10,7 +10,14 @@ import {
   setAlbumPublished,
 } from '@/db/admin'
 import { uniqueConstraintColumns } from '@/db/errors'
-import { createAlbum, getPhoto, updateAlbum, updatePhoto } from '@/db/queries'
+import {
+  createAlbum,
+  getPhoto,
+  getPhotoWithVersions,
+  updateAlbum,
+  updatePhoto,
+} from '@/db/queries'
+import { getStorage, photoObjectKeys } from '@/server/storage'
 import { CAPTION_MAX_LENGTH } from '@/utils/photo'
 import { SLUG_PATTERN } from '@/utils/slug'
 import { requireAdmin } from './auth'
@@ -160,8 +167,13 @@ export const adminDeletePhoto = createServerFn({ method: 'POST' })
     validate(z.object({ photoId: id }), input),
   )
   .handler(async ({ data }) => {
-    const photo = await deletePhotoRecord(db(), data.photoId)
+    const photo = await getPhotoWithVersions(db(), data.photoId)
     if (!photo) throw new Error('Photo not found')
-    // TODO(PR 3): delete the S3 objects for this photo's versions.
+    // Storage first: DeleteObjects is idempotent, so if it fails the rows
+    // stay and the admin can simply retry, whereas deleting the rows first
+    // would strand the objects in the bucket with nothing pointing at them.
+    const keys = photoObjectKeys(photo, photo.versions)
+    if (keys.length) await getStorage().deleteObjects(keys)
+    await deletePhotoRecord(db(), data.photoId)
     return { deleted: photo.id }
   })

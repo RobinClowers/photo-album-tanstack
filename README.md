@@ -42,7 +42,9 @@ Configuration lives in three places:
 
 - **Runtime `vars`** — non-secret values in `wrangler.jsonc`, mirrored under
   `env.staging` because named environments do not inherit them. Read from the
-  Worker's `Env` binding. (There are none at the moment.)
+  Worker's `Env` binding (`ADMIN_EMAILS`, `S3_BUCKET`, `AWS_REGION`,
+  `S3_ENDPOINT`). `.dev.vars` may override a var locally, but only keys that
+  are declared as a var or a required secret reach the Worker.
 - **Build-time `VITE_*`** — in `.env`, `.env.staging`, etc., inlined at build
   time and read via `import.meta.env` (e.g. `VITE_PHOTO_BASE_URL`).
 - **Secrets** — `.dev.vars` locally (gitignored; copy `.dev.vars.example`) and
@@ -53,6 +55,37 @@ Configuration lives in three places:
 Drizzle's remote commands (`bun run db:studio`) need Cloudflare API credentials
 in a `.env` file — copy `.env.example` to `.env` and fill it in.
 `bun run db:generate` works offline without it.
+
+## Storage
+
+Photos live in a public-read S3 bucket (`robin-photos` in production,
+`robin-photos-staging` in staging), one object per size variant at
+`<album-slug>/<size>/<filename>`. `src/server/s3.ts` is a small client over
+[aws4fetch](https://github.com/mhart/aws4fetch): put (streaming, unsigned
+payload so bodies are never hashed in the Worker), head, get with byte ranges,
+list, and delete. `src/server/storage.ts` builds it from the Worker env, and
+`src/utils/photo.ts` owns the key layout shared with the public URL builders.
+
+Credentials are the secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, a
+scoped IAM user for the one bucket. Locally, use the staging user's keys or
+point dev at MinIO:
+
+```bash
+docker run -d --name photo-album-minio -p 9100:9000 \
+  -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=<pick one> \
+  quay.io/minio/minio server /data
+# then in .dev.vars: AWS_ACCESS_KEY_ID/SECRET = the MinIO root user,
+# S3_BUCKET=<a bucket you created>, S3_ENDPOINT=http://127.0.0.1:9100
+```
+
+`bun run s3:smoke` round-trips an object against whatever `.dev.vars` points
+at (put, head, range get, list, anonymous read, delete) and exits non-zero if
+any step fails. To test the staging bucket with an SSO profile instead of
+static keys:
+
+```bash
+AWS_PROFILE=photo-album-staging S3_BUCKET=robin-photos-staging bun scripts/s3-smoke.ts
+```
 
 ## Environments
 
