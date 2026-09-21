@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   createImport,
-  finishImport,
   getImport,
   insertImportItems,
   setImportStatus,
@@ -183,6 +182,16 @@ export const adminPollGooglePick = createServerFn({ method: 'POST' })
       .from(photos)
       .where(eq(photos.albumId, record.albumId))
     const plan = planPickedItems(items, existing)
+    console.log(
+      `[google] import ${record.id}: picked ${items.length}, importing ${plan.toImport.length}`,
+      plan.skipped,
+      // Whether Picker ids line up with the legacy Library API ids decides
+      // how dedupe behaves for old albums, so log a sample of each.
+      {
+        pickedIds: items.slice(0, 3).map((i) => i.id),
+        existingIds: existing.slice(0, 3).map((p) => p.googleId),
+      },
+    )
     const itemIds = await insertImportItems(
       db(),
       record.id,
@@ -196,10 +205,13 @@ export const adminPollGooglePick = createServerFn({ method: 'POST' })
         }),
       })),
     )
-    await setImportStatus(db(), record.id, 'running')
     if (itemIds.length === 0) {
-      await finishImport(db(), record.id)
+      // Everything picked was already in the album: nothing to run, so the
+      // import is closed directly (finishImport only closes imports that had
+      // items, so the sweeper cannot do it either).
+      await setImportStatus(db(), record.id, 'done')
     } else {
+      await setImportStatus(db(), record.id, 'running')
       await enqueueItems(env.PHOTO_QUEUE, itemIds)
     }
     // The picked items are copied into our rows; the session has done its job.

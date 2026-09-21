@@ -257,8 +257,11 @@ export function GoogleImportDialog({
 
 function SkippedSummary({ skipped }: { skipped: PickPlan['skipped'] }) {
   const parts = [
-    skipped.existingById + skipped.existingByFilename
-      ? `${skipped.existingById + skipped.existingByFilename} already in the album`
+    skipped.existingById
+      ? `${skipped.existingById} already in the album (same Google id)`
+      : null,
+    skipped.existingByFilename
+      ? `${skipped.existingByFilename} already in the album (same filename)`
       : null,
     skipped.unsupported ? `${skipped.unsupported} not a supported photo` : null,
     skipped.duplicateFilename
