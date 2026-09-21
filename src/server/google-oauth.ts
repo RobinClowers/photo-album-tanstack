@@ -171,9 +171,13 @@ export const OAUTH_PURPOSE_COOKIE = 'oauth_purpose'
 
 const PHOTOS_PURPOSE = 'photos'
 
-/** Only admin-relative paths are accepted as a return target. */
+/**
+ * Only admin-relative paths are accepted as a return target, and only bare
+ * ones: the callback appends its own `?google=` query, and `|` is the cookie
+ * separator.
+ */
 export function safeReturnTo(value: string | null | undefined): string {
-  return value && /^\/admin(\/[^\s]*)?$/.test(value) ? value : '/admin'
+  return value && /^\/admin(\/[^\s?#|]*)?$/.test(value) ? value : '/admin'
 }
 
 export function photosPurpose(returnTo: string | null | undefined): string {

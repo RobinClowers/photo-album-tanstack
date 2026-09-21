@@ -76,7 +76,7 @@ export async function importGooglePhoto(
 
   let photo = await findPhotoInAlbum(db, album.id, picked.filename)
   let downloaded = false
-  let oversized = false
+  let declaredBytes = 0
   let accessToken: string | undefined
 
   if (!photo) {
@@ -101,7 +101,6 @@ export async function importGooglePhoto(
       throw new Error(`Google download failed with status ${res.status}`)
     }
     const length = Number(res.headers.get('content-length') ?? 0)
-    oversized = length > MAX_SOURCE_BYTES
     await storage.put(
       photoObjectKey(album.slug, ORIGINAL_SIZE, picked.filename),
       res.body,
@@ -110,6 +109,7 @@ export async function importGooglePhoto(
         ...(length > 0 ? { contentLength: length } : {}),
       },
     )
+    declaredBytes = length
     downloaded = true
     photo = await createPhotoRow(db, album.id, album.slug, picked)
     await setImportItemPhoto(db, item.id, photo.id)
@@ -117,12 +117,32 @@ export async function importGooglePhoto(
     await setImportItemPhoto(db, item.id, photo.id)
   }
 
-  if (oversized) {
+  // Whether the original is above the Images input limit is decided from the
+  // stored object, not only from the first attempt's headers: a retry finds
+  // the row already there and skips the download, and Google may omit
+  // content-length. Reading it from storage would otherwise fail every time.
+  const storedBytes =
+    declaredBytes > 0
+      ? declaredBytes
+      : ((
+          await storage.head(
+            photoObjectKey(
+              photo.path ?? album.slug,
+              ORIGINAL_SIZE,
+              photo.filename ?? picked.filename,
+            ),
+          )
+        )?.size ?? 0)
+  if (storedBytes > MAX_SOURCE_BYTES) {
     // Above the Images input limit: keep the original as uploaded and let
     // Google resize a copy large enough for every variant.
+    const pickedDimensions =
+      picked.width && picked.height
+        ? { width: picked.width, height: picked.height }
+        : undefined
     accessToken ??= await tokenFor(db, record.createdByUserId)
     const res = await fetch(
-      resizedDownloadUrl(picked.baseUrl, LARGEST_VARIANT_PX),
+      resizedDownloadUrl(picked.baseUrl, LARGEST_VARIANT_PX, pickedDimensions),
       { headers: { authorization: `Bearer ${accessToken}` } },
     )
     if (!res.ok) {
@@ -136,10 +156,7 @@ export async function importGooglePhoto(
       force: false,
       source: {
         bytes: await res.arrayBuffer(),
-        originalDimensions:
-          picked.width && picked.height
-            ? { width: picked.width, height: picked.height }
-            : undefined,
+        originalDimensions: pickedDimensions,
       },
     })
     return { ...result, downloaded }

@@ -121,14 +121,12 @@ export async function reprocessPhoto(
   }
   // Stored pixel dimensions; the displayed image is rotated when EXIF says
   // so, and the Images service applies that rotation to every variant.
-  const sourceDimensions: Dimensions = isRotated(exif?.orientation ?? null)
+  const dimensions: Dimensions = isRotated(exif?.orientation ?? null)
     ? { width: info.height, height: info.width }
     : { width: info.width, height: info.height }
   // Variants are planned from the bytes at hand; the original row records
   // the true original when a resized stand-in is being processed.
-  const dimensions = sourceDimensions
-  const originalDimensions =
-    options.source?.originalDimensions ?? sourceDimensions
+  const originalDimensions = options.source?.originalDimensions ?? dimensions
 
   const now = new Date().toISOString()
   const planned = planVariants(dimensions)

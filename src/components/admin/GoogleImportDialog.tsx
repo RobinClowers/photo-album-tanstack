@@ -40,6 +40,10 @@ type Phase =
 const connectUrl = (albumId: number) =>
   `/api/auth/google/photos?returnTo=${encodeURIComponent(`/admin/albums/${albumId}`)}`
 
+/** Same shape as useAdminAction's Snackbar text: no "Error:" prefix. */
+const messageOf = (error: unknown) =>
+  error instanceof Error ? error.message : String(error)
+
 /**
  * Drives a Google Photos import: connect the account if needed, open
  * Google's picker in a new tab, poll until the admin has finished choosing,
@@ -77,7 +81,7 @@ export function GoogleImportDialog({
         )
       })
       .catch((error: unknown) => {
-        if (!cancelled) setPhase({ kind: 'error', message: String(error) })
+        if (!cancelled) setPhase({ kind: 'error', message: messageOf(error) })
       })
     return () => {
       cancelled = true
@@ -86,14 +90,14 @@ export function GoogleImportDialog({
   }, [open, stopPolling])
 
   const poll = useCallback(
-    (importId: number, pickerUri: string, delayMs: number) => {
+    (importId: number, delayMs: number) => {
       stopPolling()
       pollTimer.current = setTimeout(async () => {
         try {
           const result = await adminPollGooglePick({ data: { importId } })
           switch (result.status) {
             case 'picking':
-              poll(importId, pickerUri, result.pollIntervalMs)
+              poll(importId, result.pollIntervalMs)
               return
             case 'running':
             case 'done':
@@ -119,7 +123,7 @@ export function GoogleImportDialog({
               })
           }
         } catch (error) {
-          setPhase({ kind: 'error', message: String(error) })
+          setPhase({ kind: 'error', message: messageOf(error) })
         }
       }, delayMs)
     },
@@ -144,10 +148,10 @@ export function GoogleImportDialog({
         importId: result.importId,
         pickerUri: result.pickerUri,
       })
-      poll(result.importId, result.pickerUri, result.pollIntervalMs)
+      poll(result.importId, result.pollIntervalMs)
     } catch (error) {
       tab?.close()
-      setPhase({ kind: 'error', message: String(error) })
+      setPhase({ kind: 'error', message: messageOf(error) })
     }
   }
 

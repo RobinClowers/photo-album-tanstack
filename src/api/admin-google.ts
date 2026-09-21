@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
+  claimPickingImport,
   createImport,
   getImport,
   insertImportItems,
@@ -23,7 +24,11 @@ import {
   getPickerSession,
   listPickedMediaItems,
 } from '@/server/google-photos'
-import { type PickPlan, planPickedItems } from '@/server/pipeline/google-plan'
+import {
+  emptyPickSkipped,
+  type PickPlan,
+  planPickedItems,
+} from '@/server/pipeline/google-plan'
 import { serializeImportItemPayload } from '@/server/pipeline/items'
 import { enqueueItems } from '@/server/pipeline/queue'
 import { requireAdmin } from './auth'
@@ -108,6 +113,14 @@ async function ownedPickingImport(
   return record
 }
 
+/** The result for an import that an earlier poll already moved past picking. */
+function settledPickResult(status: string): PollPickResult {
+  if (status === 'running' || status === 'done') {
+    return { status, queued: 0, skipped: emptyPickSkipped() }
+  }
+  return { status: status === 'cancelled' ? 'cancelled' : 'failed' }
+}
+
 /**
  * One poll of a picking session. When Google reports the selection is made,
  * this lists the picked items, plans them against the album (dedupe by
@@ -120,21 +133,7 @@ export const adminPollGooglePick = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }): Promise<PollPickResult> => {
     const record = await ownedPickingImport(data.importId, context.user.id)
-    if (record.status !== 'picking') {
-      if (record.status === 'running' || record.status === 'done') {
-        return {
-          status: record.status,
-          queued: 0,
-          skipped: {
-            existingById: 0,
-            existingByFilename: 0,
-            unsupported: 0,
-            duplicateFilename: 0,
-          },
-        }
-      }
-      return { status: record.status === 'cancelled' ? 'cancelled' : 'failed' }
-    }
+    if (record.status !== 'picking') return settledPickResult(record.status)
     if (!record.googleSessionId || !record.albumId) {
       await setImportStatus(db(), record.id, 'failed', {
         error: 'Picking session was not recorded',
@@ -185,37 +184,45 @@ export const adminPollGooglePick = createServerFn({ method: 'POST' })
     console.log(
       `[google] import ${record.id}: picked ${items.length}, importing ${plan.toImport.length}`,
       plan.skipped,
-      // Whether Picker ids line up with the legacy Library API ids decides
-      // how dedupe behaves for old albums, so log a sample of each.
-      {
-        pickedIds: items.slice(0, 3).map((i) => i.id),
-        existingIds: existing.slice(0, 3).map((p) => p.googleId),
-      },
     )
-    const itemIds = await insertImportItems(
-      db(),
-      record.id,
-      plan.toImport.map((item) => ({
-        filename: item.filename,
-        googleMediaId: item.id,
-        payload: serializeImportItemPayload({
-          task: 'google-import',
-          albumId: record.albumId as number,
-          item,
-        }),
-      })),
-    )
+    // Claim the import before writing anything: a second poll in flight (a
+    // retried request, the dialog open in another tab) must not insert the
+    // same picks twice. Whoever lost the claim reports what the winner did.
+    if (!(await claimPickingImport(db(), record.id))) {
+      const current = await getImport(db(), record.id)
+      return settledPickResult(current?.status ?? 'failed')
+    }
+    let itemIds: number[]
+    try {
+      itemIds = await insertImportItems(
+        db(),
+        record.id,
+        plan.toImport.map((item) => ({
+          filename: item.filename,
+          googleMediaId: item.id,
+          payload: serializeImportItemPayload({
+            task: 'google-import',
+            albumId: record.albumId as number,
+            item,
+          }),
+        })),
+      )
+    } catch (error) {
+      // Hand the import back to the next poll rather than leaving it
+      // 'running' with no items, which nothing would ever close.
+      await setImportStatus(db(), record.id, 'picking')
+      throw error
+    }
     if (itemIds.length === 0) {
       // Everything picked was already in the album: nothing to run, so the
       // import is closed directly (finishImport only closes imports that had
       // items, so the sweeper cannot do it either).
       await setImportStatus(db(), record.id, 'done')
     } else {
-      await setImportStatus(db(), record.id, 'running')
       await enqueueItems(env.PHOTO_QUEUE, itemIds)
     }
-    // The picked items are copied into our rows; the session has done its job.
-    deletePickerSession(accessToken, record.googleSessionId).catch(() => {})
+    // The session is deliberately left open: "Retry failed" re-lists it for
+    // fresh download links (google-retry.ts) until Google expires it.
     return {
       status: itemIds.length === 0 ? 'done' : 'running',
       queued: itemIds.length,

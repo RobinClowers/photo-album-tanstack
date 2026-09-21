@@ -5,8 +5,10 @@ import {
   eq,
   exists,
   inArray,
+  isNull,
   lt,
   notExists,
+  or,
   sql,
 } from 'drizzle-orm'
 import { chunk } from '@/utils/chunk'
@@ -192,6 +194,59 @@ export async function setImportStatus(
       ...(finished ? { finishedAt: timestamp } : {}),
     })
     .where(eq(imports.id, importId))
+}
+
+/**
+ * picking → running, only while the import is still picking. False when
+ * another poll got there first, so the picked items are written exactly once.
+ */
+export async function claimPickingImport(
+  db: DB,
+  importId: number,
+): Promise<boolean> {
+  const [row] = await db
+    .update(imports)
+    .set({ status: 'running', updatedAt: now() })
+    .where(and(eq(imports.id, importId), eq(imports.status, 'picking')))
+    .returning({ id: imports.id })
+  return Boolean(row)
+}
+
+/**
+ * Close Google imports left 'picking' after their picker session expired:
+ * the admin navigated away without finishing, so no poll will ever move them
+ * on. An import with no recorded session expiry is given `fallbackMs` from
+ * its last update instead. Returns how many were closed.
+ */
+export async function cancelExpiredPickingImports(
+  db: DB,
+  fallbackMs: number,
+): Promise<number> {
+  const timestamp = now()
+  const cutoff = new Date(Date.now() - fallbackMs).toISOString()
+  const rows = await db
+    .update(imports)
+    .set({
+      status: 'cancelled',
+      error:
+        'Google Photos picking session expired before any photos were chosen',
+      finishedAt: timestamp,
+      updatedAt: timestamp,
+    })
+    .where(
+      and(
+        eq(imports.status, 'picking'),
+        or(
+          lt(imports.googleSessionExpiresAt, timestamp),
+          and(
+            isNull(imports.googleSessionExpiresAt),
+            lt(imports.updatedAt, cutoff),
+          ),
+        ),
+      ),
+    )
+    .returning({ id: imports.id })
+  return rows.length
 }
 
 /** Point an existing item at the photo row the consumer created for it. */

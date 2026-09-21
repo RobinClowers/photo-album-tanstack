@@ -42,8 +42,20 @@ describe('download urls', () => {
   it('appends the Google size parameters', () => {
     expect(originalDownloadUrl('https://x/y')).toBe('https://x/y=d')
     expect(resizedDownloadUrl('https://x/y', 2304)).toBe(
-      'https://x/y=w2304-h2304',
+      'https://x/y=w9216-h2304',
     )
+  })
+
+  it('widens the resize box so the height is the binding side', () => {
+    expect(
+      resizedDownloadUrl('https://x/y', 2304, { width: 4032, height: 3024 }),
+    ).toBe('https://x/y=w3072-h2304')
+    expect(
+      resizedDownloadUrl('https://x/y', 2304, { width: 3024, height: 4032 }),
+    ).toBe('https://x/y=w3072-h2304')
+    expect(
+      resizedDownloadUrl('https://x/y', 2304, { width: 9000, height: 3000 }),
+    ).toBe('https://x/y=w6912-h2304')
   })
 })
 

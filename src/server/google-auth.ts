@@ -6,6 +6,7 @@ import {
   getGoogleAuthorization,
   upsertGoogleAuthorization,
 } from '@/db/google-auth'
+import type { GoogleAuthorization } from '@/db/schema'
 import {
   GoogleOAuthError,
   refreshAccessToken,
@@ -30,14 +31,17 @@ export function expiresAtFrom(tokens: TokenResponse, now = Date.now()): string {
 /**
  * Persist a token response for a user, keeping the previous refresh token
  * when Google did not send a new one (it only does on the first consent).
+ * A caller that already holds the stored tokens passes them as `previous`
+ * (null for none) to skip reading and decrypting the row again.
  */
 export async function storeGoogleTokens(
   db: DB,
   userId: number,
   tokens: TokenResponse,
+  previous?: GoogleTokens | null,
 ): Promise<void> {
-  const previous = await readTokens(db, userId)
-  const refreshToken = tokens.refresh_token ?? previous?.refreshToken ?? null
+  const prior = previous === undefined ? await readTokens(db, userId) : previous
+  const refreshToken = tokens.refresh_token ?? prior?.refreshToken ?? null
   const blob: GoogleTokens = {
     accessToken: tokens.access_token,
     refreshToken,
@@ -51,20 +55,29 @@ export async function storeGoogleTokens(
   })
 }
 
-async function readTokens(
-  db: DB,
-  userId: number,
+/** Unseal a row's token blob; null when the key no longer opens it. */
+async function openTokens(
+  row: GoogleAuthorization,
 ): Promise<GoogleTokens | null> {
-  const row = await getGoogleAuthorization(db, userId)
-  if (!row) return null
   try {
     return JSON.parse(await open(await tokenKey(), row.encryptedTokens))
   } catch (error) {
     // A rotated key or corrupt row: treat as not connected so the admin is
     // asked to reconnect instead of every import failing opaquely.
-    console.warn(`[google] could not open tokens for user ${userId}:`, error)
+    console.warn(
+      `[google] could not open tokens for user ${row.userId}:`,
+      error,
+    )
     return null
   }
+}
+
+async function readTokens(
+  db: DB,
+  userId: number,
+): Promise<GoogleTokens | null> {
+  const row = await getGoogleAuthorization(db, userId)
+  return row ? openTokens(row) : null
 }
 
 export type GoogleConnection =
@@ -84,7 +97,7 @@ export async function getGoogleConnection(
   if (!row?.scope.split(/\s+/).includes(PICKER_SCOPE)) {
     return { status: 'disconnected' }
   }
-  const tokens = await readTokens(db, userId)
+  const tokens = await openTokens(row)
   if (!tokens) return { status: 'disconnected' }
   return {
     status: 'connected',
@@ -124,7 +137,7 @@ export async function getValidAccessToken(
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       refreshToken: tokens.refreshToken,
     })
-    await storeGoogleTokens(db, userId, refreshed)
+    await storeGoogleTokens(db, userId, refreshed, tokens)
     return refreshed.access_token
   } catch (error) {
     if (error instanceof GoogleOAuthError && error.status === 400) {

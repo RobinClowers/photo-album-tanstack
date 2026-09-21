@@ -1,12 +1,15 @@
-import { isImportablePhoto, type PickedMediaItem } from '@/server/google-photos'
+import {
+  isImportablePhoto,
+  type PickedMediaItem,
+  parseDurationSeconds,
+} from '@/server/google-photos'
 import { scrubFilename } from '@/utils/filename'
 import type { PickedItemPayload } from './items'
 
-/** Google's "0.001s" → 0.001; anything else → null. */
+/** Google's "0.001s" → 0.001; zero, negative or unparseable → null. */
 export function exposureSecondsFrom(value: string | undefined): number | null {
-  const match = value ? /^(\d+(?:\.\d+)?)s$/.exec(value) : null
-  const seconds = match?.[1] ? Number(match[1]) : Number.NaN
-  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+  const seconds = parseDurationSeconds(value)
+  return seconds !== null && seconds > 0 ? seconds : null
 }
 
 /** RFC 3339 → the 'YYYY-MM-DD HH:MM:SS' the photos table stores (UTC). */
@@ -56,6 +59,16 @@ export interface PickPlan {
   }
 }
 
+/** A skip tally with nothing skipped. */
+export function emptyPickSkipped(): PickPlan['skipped'] {
+  return {
+    existingById: 0,
+    existingByFilename: 0,
+    unsupported: 0,
+    duplicateFilename: 0,
+  }
+}
+
 /**
  * Decide which picked items become import items. Dedupe is by Google id
  * first, then by filename, matching the Rails importer's behaviour so a
@@ -71,15 +84,7 @@ export function planPickedItems(
   const byFilename = new Set(
     existing.map((p) => p.filename).filter((v): v is string => Boolean(v)),
   )
-  const plan: PickPlan = {
-    toImport: [],
-    skipped: {
-      existingById: 0,
-      existingByFilename: 0,
-      unsupported: 0,
-      duplicateFilename: 0,
-    },
-  }
+  const plan: PickPlan = { toImport: [], skipped: emptyPickSkipped() }
   const seen = new Set<string>()
   for (const item of items) {
     if (!isImportablePhoto(item)) {

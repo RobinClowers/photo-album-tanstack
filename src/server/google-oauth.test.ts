@@ -64,6 +64,10 @@ describe('purpose cookie', () => {
     expect(safeReturnTo('//evil.example')).toBe('/admin')
     expect(safeReturnTo('/login')).toBe('/admin')
     expect(safeReturnTo(null)).toBe('/admin')
+    // The callback appends its own query, and `|` separates the cookie.
+    expect(safeReturnTo('/admin/albums/12?x=1')).toBe('/admin')
+    expect(safeReturnTo('/admin/albums/12#top')).toBe('/admin')
+    expect(safeReturnTo('/admin/a|b')).toBe('/admin')
     expect(parsePurpose('photos|https://evil.example/')?.returnTo).toBe(
       '/admin',
     )

@@ -19,7 +19,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ENVIRONMENTS = {
@@ -58,6 +58,9 @@ for (let i = 0; i < rest.length; i++) {
   else if (arg === '--file') file = rest[++i]
   else positional.push(arg)
 }
+// Wrangler is spawned with the repo as its cwd, so a relative path given from
+// elsewhere has to be made absolute before both sides read it.
+if (file !== undefined) file = resolve(file)
 const sql = file ? readFileSync(file, 'utf8') : positional.join(' ')
 if (!sql.trim()) usage('no SQL given')
 

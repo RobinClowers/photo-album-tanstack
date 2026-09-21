@@ -14,9 +14,6 @@ export const PICKER_SCOPE =
 
 export const PICKER_API_URL = 'https://photospicker.googleapis.com/v1'
 
-/** Sessions hold at most this many picked items. */
-export const PICKER_MAX_ITEMS = 2000
-
 export interface PickerSession {
   id: string
   pickerUri: string
@@ -157,15 +154,45 @@ export function originalDownloadUrl(baseUrl: string): string {
   return `${baseUrl}=d`
 }
 
-/** URL for a server-side resized copy, the fallback for oversized originals. */
-export function resizedDownloadUrl(baseUrl: string, maxPx: number): string {
-  return `${baseUrl}=w${maxPx}-h${maxPx}`
+/**
+ * URL for a server-side resized copy at least `height` pixels tall, the
+ * fallback for oversized originals. Google requires both `w` and `h` and
+ * scales the image to fit inside that box without upscaling, so the box is
+ * made as wide as the original's aspect ratio needs for the height to be the
+ * binding side: a square box would leave a landscape copy shorter than
+ * `height` and lose the tallest variants. Either orientation of the given
+ * dimensions is allowed for; without them the box is four times wider than
+ * tall.
+ */
+export function resizedDownloadUrl(
+  baseUrl: string,
+  height: number,
+  original?: { width: number; height: number } | null,
+): string {
+  const width =
+    original && original.width > 0 && original.height > 0
+      ? Math.ceil(
+          (height * Math.max(original.width, original.height)) /
+            Math.min(original.width, original.height),
+        )
+      : height * 4
+  return `${baseUrl}=w${width}-h${height}`
+}
+
+/**
+ * Google's JSON Duration ("5s", "0.001s") → seconds; anything else → null.
+ * Shared by the picker's poll interval and the photo metadata's exposure.
+ */
+export function parseDurationSeconds(value: string | undefined): number | null {
+  const match = value ? /^(\d+(?:\.\d+)?)s$/.exec(value) : null
+  const seconds = match?.[1] ? Number(match[1]) : Number.NaN
+  return Number.isFinite(seconds) ? seconds : null
 }
 
 /** "5s" → 5000; unknown formats fall back to `fallbackMs`. */
 export function durationToMs(value: string | undefined, fallbackMs: number) {
-  const match = value ? /^(\d+(?:\.\d+)?)s$/.exec(value) : null
-  return match?.[1] ? Math.round(Number(match[1]) * 1000) : fallbackMs
+  const seconds = parseDurationSeconds(value)
+  return seconds === null ? fallbackMs : Math.round(seconds * 1000)
 }
 
 /** Mime types the pipeline can turn into variants. */

@@ -91,7 +91,7 @@ export const imports = sqliteTable(
     albumId: integer('album_id'),
     /** 'reprocess' | 'google' */
     kind: text('kind').notNull(),
-    /** 'running' | 'done' | 'failed' */
+    /** ImportStatus in src/db/imports.ts: picking | running | done | failed | cancelled */
     status: text('status').notNull().default('running'),
     createdByUserId: integer('created_by_user_id'),
     error: text('error'),

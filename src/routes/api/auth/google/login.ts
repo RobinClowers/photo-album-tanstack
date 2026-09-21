@@ -1,10 +1,15 @@
 import { env } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
-import { getRequestProtocol, setCookie } from '@tanstack/react-start/server'
+import {
+  deleteCookie,
+  getRequestProtocol,
+  setCookie,
+} from '@tanstack/react-start/server'
 import {
   buildAuthUrl,
   googleCallbackUrl,
   LOGIN_SCOPES,
+  OAUTH_PURPOSE_COOKIE,
   OAUTH_STATE_COOKIE,
   stateCookieOptions,
 } from '@/server/google-oauth'
@@ -23,10 +28,12 @@ export const Route = createFileRoute('/api/auth/google/login')({
         })
         // Cookies set on the request context are merged onto this redirect
         // response by TanStack Start.
-        setCookie(OAUTH_STATE_COOKIE, state, {
-          ...stateCookieOptions(getRequestProtocol() === 'https'),
-          maxAge: 600,
-        })
+        const options = stateCookieOptions(getRequestProtocol() === 'https')
+        setCookie(OAUTH_STATE_COOKIE, state, { ...options, maxAge: 600 })
+        // The callback reads the purpose cookie first, so a Google Photos
+        // connection abandoned in the last ten minutes must not turn this
+        // sign-in into a token store.
+        deleteCookie(OAUTH_PURPOSE_COOKIE, options)
         return new Response(null, { status: 302, headers: { location } })
       },
     },
