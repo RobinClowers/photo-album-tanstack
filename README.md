@@ -35,7 +35,7 @@ database until you run `bun run db:local`, which applies the migrations in
 from a D1 export (see [Database](#database) for how to produce one):
 
 ```bash
-bun run wrangler d1 execute photo-album --local --file tmp/staging-content.sql
+bun run db local --write --file tmp/staging-content.sql
 ```
 
 Configuration lives in three places:
@@ -178,6 +178,34 @@ bun run db:migrate:staging     # apply to staging
 bun run db:migrate             # apply to production
 ```
 
+### Running SQL by hand
+
+Always go through the `db` script, never a raw `wrangler d1 execute`:
+
+```bash
+bun run db local   "select count(*) from albums"
+bun run db staging "select count(*) from albums"
+bun run db prod    "select count(*) from albums"
+bun run db staging --write "delete from photos where album_id = 5"
+bun run db staging --write --file tmp/fixup.sql
+```
+
+The environment is the first argument and has no default. Every environment
+binds its database as `photo_album`, and the script passes that binding name
+plus `--env`, the same way deploys choose their environment, so a database
+*name* never has to be typed. Wrangler's `d1 execute` otherwise accepts either
+a database name or a binding, and the production database's name is the bare
+project name `photo-album`, which is how a staging cleanup was once run
+against production. Wrangler prints the database it resolved, with its id,
+before running; the script refuses statements that write unless you pass
+`--write`, and pauses five seconds before a production write.
+
+If something does go wrong on a remote database, D1 Time Travel keeps thirty
+days of history: `bun run wrangler d1 time-travel restore photo-album
+--timestamp <RFC 3339 just before the mistake>` (the `photo-album-staging`
+name for staging) rolls the whole database back, and prints the bookmark to
+undo the restore itself.
+
 The production and staging databases were seeded from SQL dumps rather than by
 running migration `0000`, so wrangler has no record of it. Before the first
 `migrations apply` against such a database, record the baseline once so
@@ -192,8 +220,8 @@ CREATE TABLE IF NOT EXISTS d1_migrations(
 INSERT OR IGNORE INTO d1_migrations(name) VALUES ('0000_careful_paladin.sql');
 ```
 
-Run it with `bun run wrangler d1 execute <db> [--remote|--local] --command "..."`.
-The remote staging database has this row; production still needs it. Local
+Run it with `bun run db <env> --write "..."`. The remote staging database has
+this row; production still needs it. Local
 databases live in `.wrangler/state` and are per-machine, so each clone that
 seeds from a dump rather than `db:local` has to record the baseline itself.
 
@@ -218,7 +246,7 @@ fails on `UNIQUE constraint failed`. Clear the target first, keeping the
 `d1_migrations` baseline row:
 
 ```bash
-bun run wrangler d1 execute photo-album-staging --remote --yes --command "
+bun run db staging --write "
   DROP TABLE IF EXISTS plus_ones;
   DROP TABLE IF EXISTS comments;
   DROP TABLE IF EXISTS redirects;
@@ -226,8 +254,8 @@ bun run wrangler d1 execute photo-album-staging --remote --yes --command "
   DROP TABLE IF EXISTS photos;
   DROP TABLE IF EXISTS albums;
 "
-bun run wrangler d1 execute photo-album-staging --remote --yes --file tmp/staging-content.sql
-bun run wrangler d1 execute photo-album-staging --remote --yes --command "
+bun run db staging --write --file tmp/staging-content.sql
+bun run db staging --write "
   INSERT OR IGNORE INTO d1_migrations(name) VALUES ('0000_careful_paladin.sql');
 "
 ```
@@ -243,9 +271,7 @@ If a staging database was previously seeded from a full production export, it
 still holds real `users` and `google_authorizations` rows; scrub them once:
 
 ```bash
-bun run wrangler d1 execute photo-album-staging --remote --yes --command "
-  DELETE FROM google_authorizations; DELETE FROM users;
-"
+bun run db staging --write "DELETE FROM google_authorizations; DELETE FROM users;"
 ```
 
 `scripts/convert-pg-to-sqlite.js` is the one-off converter used to move the
