@@ -77,6 +77,12 @@ reprocess test:
 bun run wrangler r2 object put robin-photos/<slug>/original/<file>.jpg --file <file>.jpg --local
 ```
 
+In `bun run dev`, `.env.development` points `VITE_PHOTO_BASE_URL` at
+`/dev-images/`, a dev-only route that serves objects from the emulated bucket
+and redirects anything it does not have (every legacy photo) to the
+production image domain, so locally imported photos render in the admin
+without hiding the rest of the site.
+
 The same command without `--local` (and with the staging bucket name) seeds
 the staging bucket. The production bucket was filled once from the legacy S3
 bucket with Cloudflare's Super Slurper; the S3 bucket stays read-only until
