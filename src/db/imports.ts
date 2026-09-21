@@ -1,4 +1,14 @@
-import { and, count, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  exists,
+  inArray,
+  lt,
+  notExists,
+  sql,
+} from 'drizzle-orm'
 import { chunk } from '@/utils/chunk'
 import type { DB } from './index'
 import {
@@ -87,25 +97,25 @@ export async function createImport(
   items: ImportItemInput[],
 ): Promise<{ import: Import; itemIds: number[] }> {
   const timestamp = now()
+  // An import with nothing to do is born finished; finishImport refuses to
+  // close an import with no items, so this is the only way one gets closed.
+  const empty = items.length === 0
   const [record] = await db
     .insert(imports)
     .values({
       albumId: data.albumId,
       kind: data.kind,
-      status: 'running',
+      status: empty ? 'done' : 'running',
       createdByUserId: data.createdByUserId,
       googleSessionId: data.googleSessionId ?? null,
       googleSessionExpiresAt: data.googleSessionExpiresAt ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
+      finishedAt: empty ? timestamp : null,
     })
     .returning()
   if (!record) throw new Error('Failed to create import')
-
-  if (items.length === 0) {
-    await finishImport(db, record.id)
-    return { import: (await getImport(db, record.id)) ?? record, itemIds: [] }
-  }
+  if (empty) return { import: record, itemIds: [] }
 
   // One statement for every item, however many: D1 allows 100 bound
   // parameters per statement (a multi-row VALUES insert binds eight per row)
@@ -229,10 +239,17 @@ export async function countImportItems(
  * Close an import whose items are all finished. Returns true when this call
  * moved it out of 'running' (so completion work runs exactly once), false
  * when items remain or it was already closed.
+ *
+ * An import with no items at all is never closed here: createImport writes
+ * the import row before its items, so a sweep or a duplicate delivery landing
+ * in between would otherwise close the import before its work exists, and
+ * nothing would ever close it again once the items finish.
  */
 export async function finishImport(db: DB, importId: number): Promise<boolean> {
   const counts = await countImportItems(db, importId)
-  if (counts.queued > 0 || counts.processing > 0) return false
+  if (counts.total === 0 || counts.queued > 0 || counts.processing > 0) {
+    return false
+  }
   const timestamp = now()
   const [updated] = await db
     .update(imports)
@@ -249,32 +266,57 @@ export async function finishImport(db: DB, importId: number): Promise<boolean> {
 /**
  * Reopen an import and put its failed items back in the queue. Returns the
  * item ids to enqueue.
+ *
+ * Both writes go in one `db.batch` (D1 runs it atomically): reset items
+ * with an import left closed would be processed but never counted, since
+ * finishImport only closes a 'running' import. The reopen is conditional on
+ * queued items existing, so a retry with nothing failed is a no-op.
  */
 export async function resetFailedImportItems(
   db: DB,
   importId: number,
 ): Promise<number[]> {
   const timestamp = now()
-  const rows = await db
-    .update(importItems)
-    .set({
-      status: 'queued',
-      attempts: 0,
-      lastError: null,
-      startedAt: null,
-      finishedAt: null,
-      updatedAt: timestamp,
-    })
-    .where(
-      and(eq(importItems.importId, importId), eq(importItems.status, 'failed')),
-    )
-    .returning({ id: importItems.id })
-  if (rows.length > 0) {
-    await db
+  const hasQueuedItems = exists(
+    db
+      .select({ id: importItems.id })
+      .from(importItems)
+      .where(
+        and(
+          eq(importItems.importId, importId),
+          eq(importItems.status, 'queued'),
+        ),
+      ),
+  )
+  const [rows] = await db.batch([
+    db
+      .update(importItems)
+      .set({
+        status: 'queued',
+        attempts: 0,
+        lastError: null,
+        startedAt: null,
+        finishedAt: null,
+        updatedAt: timestamp,
+      })
+      .where(
+        and(
+          eq(importItems.importId, importId),
+          eq(importItems.status, 'failed'),
+        ),
+      )
+      .returning({ id: importItems.id }),
+    db
       .update(imports)
       .set({ status: 'running', finishedAt: null, updatedAt: timestamp })
-      .where(eq(imports.id, importId))
-  }
+      .where(
+        and(
+          eq(imports.id, importId),
+          eq(imports.status, 'failed'),
+          hasQueuedItems,
+        ),
+      ),
+  ])
   return rows.map((r) => r.id)
 }
 
@@ -313,28 +355,50 @@ export async function touchImportItems(db: DB, ids: number[]): Promise<void> {
   }
 }
 
-export async function listRunningImportIds(db: DB): Promise<number[]> {
+/**
+ * Running imports with nothing left in flight: their completion was missed
+ * (consumer died between the last item and finishImport). One query for all
+ * of them, so the sweeper does not count every running import one by one.
+ * finishImport re-checks each candidate before closing it.
+ */
+export async function listClosableImportIds(db: DB): Promise<number[]> {
   const rows = await db
     .select({ id: imports.id })
     .from(imports)
-    .where(eq(imports.status, 'running'))
+    .where(
+      and(
+        eq(imports.status, 'running'),
+        notExists(
+          db
+            .select({ id: importItems.id })
+            .from(importItems)
+            .where(
+              and(
+                eq(importItems.importId, imports.id),
+                inArray(importItems.status, ['queued', 'processing']),
+              ),
+            ),
+        ),
+      ),
+    )
   return rows.map((r) => r.id)
 }
 
 async function countsByImport(db: DB, importIds: number[]) {
   const byImport = new Map<number, ImportCounts>()
-  if (importIds.length === 0) return byImport
-  const rows = await db
-    .select({
-      importId: importItems.importId,
-      status: importItems.status,
-      n: count(),
-    })
-    .from(importItems)
-    .where(inArray(importItems.importId, importIds))
-    .groupBy(importItems.importId, importItems.status)
-  for (const id of importIds) {
-    byImport.set(id, rowsToCounts(rows.filter((r) => r.importId === id)))
+  for (const slice of chunk(importIds, D1_IN_LIST_CHUNK)) {
+    const rows = await db
+      .select({
+        importId: importItems.importId,
+        status: importItems.status,
+        n: count(),
+      })
+      .from(importItems)
+      .where(inArray(importItems.importId, slice))
+      .groupBy(importItems.importId, importItems.status)
+    for (const id of slice) {
+      byImport.set(id, rowsToCounts(rows.filter((r) => r.importId === id)))
+    }
   }
   return byImport
 }

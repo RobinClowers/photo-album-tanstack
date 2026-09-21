@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers'
 import { createDB } from '@/db'
 import {
   findStaleImportItems,
-  listRunningImportIds,
+  listClosableImportIds,
   touchImportItems,
 } from '@/db/imports'
 import { closeImportIfFinished, enqueueItems } from './queue'
@@ -28,8 +28,10 @@ export async function sweepStaleItems(workerEnv: Env = env): Promise<void> {
     await touchImportItems(db, stale)
     await enqueueItems(workerEnv.PHOTO_QUEUE, stale)
   }
+  // One query finds the imports with nothing in flight; closing re-counts
+  // each of the (few) candidates, so a message finishing in between is safe.
   let closed = 0
-  for (const importId of await listRunningImportIds(db)) {
+  for (const importId of await listClosableImportIds(db)) {
     if (await closeImportIfFinished(db, importId)) closed++
   }
   console.log(

@@ -105,13 +105,31 @@ function asInteger(value: unknown): number | null {
   return n === null ? null : Math.round(n)
 }
 
-/** '2017:01:27 17:55:53' → '2017-01-27 17:55:53'; anything else → null. */
+/**
+ * '2017:01:27 17:55:53' → '2017-01-27 17:55:53'; anything else → null,
+ * including the all-zero date a camera with an unset clock writes: stored,
+ * it would sort first and become the album's first_photo_taken_at and cover.
+ */
 export function formatExifDate(value: string | null): string | null {
   const match = value
     ? /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(value)
     : null
   if (!match) return null
   const [, y, mo, d, h, mi, s] = match
+  const inRange = (text: string | undefined, min: number, max: number) => {
+    const n = Number(text)
+    return n >= min && n <= max
+  }
+  if (
+    !inRange(y, 1, 9999) ||
+    !inRange(mo, 1, 12) ||
+    !inRange(d, 1, 31) ||
+    !inRange(h, 0, 23) ||
+    !inRange(mi, 0, 59) ||
+    !inRange(s, 0, 59)
+  ) {
+    return null
+  }
   return `${y}-${mo}-${d} ${h}:${mi}:${s}`
 }
 

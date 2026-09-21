@@ -81,6 +81,15 @@ describe('formatExifDate', () => {
     expect(formatExifDate('    :  :     :  :  ')).toBeNull()
     expect(formatExifDate(null)).toBeNull()
   })
+
+  it('rejects the all-zero date of an unset camera clock and other nonsense', () => {
+    expect(formatExifDate('0000:00:00 00:00:00')).toBeNull()
+    expect(formatExifDate('2017:13:01 00:00:00')).toBeNull()
+    expect(formatExifDate('2017:01:32 00:00:00')).toBeNull()
+    expect(formatExifDate('2017:01:27 24:00:00')).toBeNull()
+    expect(formatExifDate('2017:01:27 00:60:00')).toBeNull()
+    expect(formatExifDate('2017:01:27 00:00:00')).toBe('2017-01-27 00:00:00')
+  })
 })
 
 describe('isRotated', () => {

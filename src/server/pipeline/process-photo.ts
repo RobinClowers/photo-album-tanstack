@@ -89,16 +89,19 @@ export async function reprocessPhoto(
   // while each stream() reads the same copy.
   const blob = new Blob([bytes])
 
-  const info = await images.info(blob.stream())
+  // The Images round trip and the EXIF parse are independent, so they
+  // overlap. EXIF is best effort: a photo without readable EXIF is still
+  // resized, but a parser failure is logged so a systematic one is visible.
+  const [info, exif] = await Promise.all([
+    images.info(blob.stream()),
+    parseExif(bytes).catch((error: unknown) => {
+      console.warn(`[pipeline] EXIF parse failed for photo ${photo.id}:`, error)
+      return null
+    }),
+  ])
   if (!('width' in info) || !info.width || !info.height) {
     throw new Error(`Could not read image dimensions (${info.format})`)
   }
-  // Best effort: a photo without readable EXIF is still resized, but a
-  // parser failure is logged so a systematic one is visible.
-  const exif = await parseExif(bytes).catch((error: unknown) => {
-    console.warn(`[pipeline] EXIF parse failed for photo ${photo.id}:`, error)
-    return null
-  })
   // Stored pixel dimensions; the displayed image is rotated when EXIF says
   // so, and the Images service applies that rotation to every variant.
   const dimensions: Dimensions = isRotated(exif?.orientation ?? null)

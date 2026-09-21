@@ -9,7 +9,7 @@ import {
   markImportItemFailed,
 } from '@/db/imports'
 import { type ImportItem, imports } from '@/db/schema'
-import { getStorage } from '@/server/storage'
+import { createStorage } from '@/server/storage'
 import { chunk } from '@/utils/chunk'
 import { finalizeAlbum } from './finalize'
 import { parseImportItemPayload } from './items'
@@ -33,10 +33,11 @@ export async function enqueueItems(
   }
 }
 
+/** Every dependency comes from the same Env, so a caller can swap all three. */
 export function pipelineDeps(workerEnv: Env): PipelineDeps {
   return {
     db: createDB(workerEnv.photo_album),
-    storage: getStorage(),
+    storage: createStorage(workerEnv.PHOTOS),
     images: workerEnv.IMAGES,
   }
 }
