@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildAuthUrl, GOOGLE_AUTH_URL, LOGIN_SCOPES } from './google-oauth'
+import {
+  buildAuthUrl,
+  GOOGLE_AUTH_URL,
+  hasScope,
+  LOGIN_SCOPES,
+  parsePurpose,
+  photosPurpose,
+  safeReturnTo,
+} from './google-oauth'
 
 describe('buildAuthUrl', () => {
   const base = {
@@ -39,5 +47,51 @@ describe('buildAuthUrl', () => {
     expect(url.searchParams.get('access_type')).toBe('offline')
     expect(url.searchParams.get('prompt')).toBe('consent')
     expect(url.searchParams.get('login_hint')).toBe('me@example.com')
+  })
+})
+
+describe('purpose cookie', () => {
+  it('encodes and decodes the photos purpose with a safe return path', () => {
+    expect(photosPurpose('/admin/albums/12')).toBe('photos|/admin/albums/12')
+    expect(parsePurpose('photos|/admin/albums/12')).toEqual({
+      purpose: 'photos',
+      returnTo: '/admin/albums/12',
+    })
+  })
+
+  it('falls back to /admin for unsafe or missing return paths', () => {
+    expect(safeReturnTo('https://evil.example/')).toBe('/admin')
+    expect(safeReturnTo('//evil.example')).toBe('/admin')
+    expect(safeReturnTo('/login')).toBe('/admin')
+    expect(safeReturnTo(null)).toBe('/admin')
+    // The callback appends its own query, and `|` separates the cookie.
+    expect(safeReturnTo('/admin/albums/12?x=1')).toBe('/admin')
+    expect(safeReturnTo('/admin/albums/12#top')).toBe('/admin')
+    expect(safeReturnTo('/admin/a|b')).toBe('/admin')
+    expect(parsePurpose('photos|https://evil.example/')?.returnTo).toBe(
+      '/admin',
+    )
+  })
+
+  it('treats anything else as a plain sign-in', () => {
+    expect(parsePurpose(undefined)).toBeNull()
+    expect(parsePurpose('login|/admin')).toBeNull()
+  })
+})
+
+describe('hasScope', () => {
+  it('matches whole scopes in the space-separated grant', () => {
+    const scope =
+      'openid https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
+    expect(
+      hasScope(
+        { scope },
+        'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
+      ),
+    ).toBe(true)
+    expect(
+      hasScope({ scope }, 'https://www.googleapis.com/auth/photospicker'),
+    ).toBe(false)
+    expect(hasScope({}, 'openid')).toBe(false)
   })
 })

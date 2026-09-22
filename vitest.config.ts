@@ -7,4 +7,8 @@ import { defineConfig } from 'vitest/config'
 // the run finishes, adding ~10s to every `vitest run`.
 export default defineConfig({
   plugins: [viteTsConfigPaths({ projects: ['./tsconfig.json'] }), viteReact()],
+  test: {
+    // Worktrees under .claude/ carry their own copies of the suite.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
+  },
 })

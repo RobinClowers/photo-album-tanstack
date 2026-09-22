@@ -19,7 +19,9 @@
   "name": "photo-album-tanstack",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  // Custom entry: TanStack Start's fetch handler plus the queue consumer and
+  // cron sweeper for the image pipeline (see src/server.ts).
+  "main": "./src/server.ts",
   "observability": {
     "logs": {
       "enabled": true,
@@ -36,11 +38,25 @@
     }
   ],
   "secrets": {
-    "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SESSION_SECRET"]
+    "required": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "SESSION_SECRET",
+      "TOKEN_ENCRYPTION_KEY"
+    ]
   },
   "vars": {
     "ADMIN_EMAILS": "robin.clowers@gmail.com"
   },
+  // Photo objects, <album-slug>/<size>/<filename>. Served publicly through the
+  // bucket's custom domain (VITE_PHOTO_BASE_URL); the Worker writes via the
+  // binding. Local dev uses an emulated bucket in .wrangler/state.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "robin-photos"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "photo_album",
@@ -49,6 +65,37 @@
       "migrations_dir": "drizzle"
     }
   ],
+  // Cloudflare Images: resizes variants in Cloudflare's image service, not
+  // in the Worker's CPU budget. Local dev is low fidelity (resize only).
+  "images": {
+    "binding": "IMAGES"
+  },
+  // One message per import item. Consumer runs one message at a time with
+  // modest concurrency so a run stays within the free-plan CPU allowance
+  // (see README, "Image pipeline"). Retries are driven from D1 state
+  // (import_items.attempts), so the platform retry count is a backstop.
+  "queues": {
+    "producers": [
+      {
+        "binding": "PHOTO_QUEUE",
+        "queue": "photo-album-photos"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "photo-album-photos",
+        "max_batch_size": 1,
+        "max_batch_timeout": 0,
+        "max_retries": 5,
+        "max_concurrency": 2,
+        "dead_letter_queue": "photo-album-photos-dlq"
+      }
+    ]
+  },
+  // Sweeper: re-enqueue items whose queue message was lost or expired.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
   "env": {
     "staging": {
       "name": "photo-album-tanstack-staging",
@@ -59,12 +106,19 @@
         "required": [
           "GOOGLE_CLIENT_ID",
           "GOOGLE_CLIENT_SECRET",
-          "SESSION_SECRET"
+          "SESSION_SECRET",
+          "TOKEN_ENCRYPTION_KEY"
         ]
       },
       "vars": {
         "ADMIN_EMAILS": "robin.clowers@gmail.com"
       },
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "robin-photos-staging"
+        }
+      ],
       "d1_databases": [
         {
           "binding": "photo_album",
@@ -72,7 +126,31 @@
           "database_id": "ff34cff0-f26c-496f-8bc6-7864c2e6906b",
           "migrations_dir": "drizzle"
         }
-      ]
+      ],
+      "images": {
+        "binding": "IMAGES"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "PHOTO_QUEUE",
+            "queue": "photo-album-photos-staging"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "photo-album-photos-staging",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 5,
+            "max_concurrency": 2,
+            "dead_letter_queue": "photo-album-photos-staging-dlq"
+          }
+        ]
+      },
+      "triggers": {
+        "crons": ["*/10 * * * *"]
+      }
     }
   }
 }

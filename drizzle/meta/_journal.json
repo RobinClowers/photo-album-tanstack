@@ -15,6 +15,20 @@
       "when": 1789424734965,
       "tag": "0001_youthful_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789743184646,
+      "tag": "0002_careful_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789769173397,
+      "tag": "0003_sleepy_living_tribunal",
+      "breakpoints": true
     }
   ]
 }

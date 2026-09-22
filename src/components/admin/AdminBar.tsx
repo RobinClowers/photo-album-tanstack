@@ -17,6 +17,17 @@ export function AdminBar({ user }: { user: AdminUser }) {
         >
           Admin
         </Typography>
+        <Button component={Link} to="/admin" size="small" color="inherit">
+          Albums
+        </Button>
+        <Button
+          component={Link}
+          to="/admin/imports"
+          size="small"
+          color="inherit"
+        >
+          Imports
+        </Button>
         <Box sx={{ flexGrow: 1 }} />
         <Typography variant="body2" color="text.secondary">
           {user.email}

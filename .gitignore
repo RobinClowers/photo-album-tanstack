@@ -17,3 +17,6 @@ todos.json
 !.env.example
 
 /tmp
+
+# Claude Code worktrees (git worktrees live here; not part of the project)
+/.claude/worktrees/

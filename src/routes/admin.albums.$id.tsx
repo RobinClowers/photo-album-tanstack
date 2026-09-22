@@ -1,4 +1,4 @@
-import { ArrowBack, OpenInNew } from '@mui/icons-material'
+import { ArrowBack, ArrowDropDown, OpenInNew } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -9,6 +9,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Menu,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -25,21 +27,53 @@ import {
   adminUpdateAlbum,
   adminUpdatePhotoCaption,
 } from '@/api/admin-albums'
+import {
+  adminListAlbumImports,
+  adminReprocessAlbum,
+  adminReprocessPhoto,
+} from '@/api/admin-imports'
+import { AlbumImports } from '@/components/admin/AlbumImports'
+import { GoogleImportDialog } from '@/components/admin/GoogleImportDialog'
 import { type AdminPhoto, PhotoTile } from '@/components/admin/PhotoTile'
 import { useAdminAction } from '@/components/admin/useAdminAction'
+import { usePollWhile } from '@/components/admin/usePollWhile'
 import type { AdminAlbumDetails } from '@/db/admin'
 import { parseRecordId } from '@/utils/id'
 import { isValidSlug } from '@/utils/slug'
 
+/** `?google=` is set by the OAuth callback after connecting Google Photos. */
+const GOOGLE_RESULTS = ['connected', 'denied', 'wrong_account'] as const
+type GoogleResult = (typeof GOOGLE_RESULTS)[number]
+
+const GOOGLE_MESSAGES: Record<GoogleResult, string> = {
+  connected: 'Google Photos connected.',
+  denied: 'Google Photos access was not granted.',
+  wrong_account:
+    'That Google account is not the one you are signed in with here.',
+}
+
 export const Route = createFileRoute('/admin/albums/$id')({
+  // Optional so links to the album page never have to pass a search object.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { google?: GoogleResult } => {
+    const google = search.google
+    return GOOGLE_RESULTS.includes(google as GoogleResult)
+      ? { google: google as GoogleResult }
+      : {}
+  },
   loader: async ({ params }) => {
     // Anything that is not a plain positive integer is a not-found URL, not a
     // server error: '0'/'-1'/'1e300' would fail zod validation on the server
     // and render a raw ZodError, and '0x10'/'1e2'/'1.0' would alias real ids.
     const id = parseRecordId(params.id)
-    const album = id === null ? null : await adminGetAlbum({ data: { id } })
+    if (id === null) throw notFound()
+    const [album, imports] = await Promise.all([
+      adminGetAlbum({ data: { id } }),
+      adminListAlbumImports({ data: { albumId: id } }),
+    ])
     if (!album) throw notFound()
-    return { album }
+    return { album, imports }
   },
   notFoundComponent: () => (
     <Container sx={{ py: 4 }}>
@@ -50,10 +84,26 @@ export const Route = createFileRoute('/admin/albums/$id')({
 })
 
 function AdminAlbumPage() {
-  const { album } = Route.useLoaderData()
+  const { album, imports } = Route.useLoaderData()
   const { run, pending, error, clearError } = useAdminAction()
   const [toDelete, setToDelete] = useState<AdminPhoto | null>(null)
+  const [reprocessMenu, setReprocessMenu] = useState<HTMLElement | null>(null)
+  const { google } = Route.useSearch()
+  // Connecting Google Photos round-trips through Google and lands back here;
+  // reopen the dialog so the admin can carry on where they left off.
+  const [googleOpen, setGoogleOpen] = useState(google === 'connected')
+  const [googleNotice, setGoogleNotice] = useState<string | null>(
+    google ? GOOGLE_MESSAGES[google] : null,
+  )
   const published = Boolean(album.publishedAt)
+  usePollWhile(imports.some((i) => i.status === 'running'))
+
+  const reprocessAlbum = (force: boolean) => {
+    setReprocessMenu(null)
+    return run(() =>
+      adminReprocessAlbum({ data: { albumId: album.id, force } }),
+    )
+  }
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -68,6 +118,34 @@ function AdminAlbumPage() {
             All albums
           </Button>
           <Box sx={{ flexGrow: 1 }} />
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={pending}
+            onClick={() => setGoogleOpen(true)}
+          >
+            Import from Google Photos
+          </Button>
+          <Button
+            size="small"
+            endIcon={<ArrowDropDown />}
+            disabled={pending || album.photos.length === 0}
+            onClick={(e) => setReprocessMenu(e.currentTarget)}
+          >
+            Reprocess variants
+          </Button>
+          <Menu
+            anchorEl={reprocessMenu}
+            open={Boolean(reprocessMenu)}
+            onClose={() => setReprocessMenu(null)}
+          >
+            <MenuItem onClick={() => reprocessAlbum(false)}>
+              Generate missing sizes only
+            </MenuItem>
+            <MenuItem onClick={() => reprocessAlbum(true)}>
+              Regenerate every size
+            </MenuItem>
+          </Menu>
           {published && album.slug && (
             <Button
               component="a"
@@ -116,7 +194,7 @@ function AdminAlbumPage() {
           </Typography>
           {album.photos.length === 0 ? (
             <Typography color="text.secondary">
-              No photos yet. Importing from Google Photos arrives in a later PR.
+              No photos yet. Use "Import from Google Photos" to add some.
             </Typography>
           ) : (
             <Box
@@ -151,20 +229,36 @@ function AdminAlbumPage() {
                     )
                   }
                   onDelete={() => setToDelete(photo)}
+                  onReprocess={() =>
+                    run(() =>
+                      adminReprocessPhoto({
+                        data: { photoId: photo.id, force: true },
+                      }),
+                    )
+                  }
                 />
               ))}
             </Box>
           )}
         </section>
+
+        {imports.length > 0 && (
+          <section>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Recent imports
+            </Typography>
+            <AlbumImports imports={imports} />
+          </section>
+        )}
       </Stack>
 
       <Dialog open={Boolean(toDelete)} onClose={() => setToDelete(null)}>
         <DialogTitle>Delete photo?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Removes <strong>{toDelete?.filename}</strong> from this album, along
-            with its comments and plus ones. The image files stay in storage for
-            now.
+            Permanently removes <strong>{toDelete?.filename}</strong> from this
+            album, along with its comments, plus ones and every stored copy of
+            the image. This cannot be undone.
             {album.coverPhotoId === toDelete?.id &&
               (album.photos.length > 1
                 ? ' The earliest remaining photo becomes the cover.'
@@ -189,6 +283,25 @@ function AdminAlbumPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <GoogleImportDialog
+        albumId={album.id}
+        open={googleOpen}
+        onClose={() => setGoogleOpen(false)}
+      />
+
+      <Snackbar
+        open={Boolean(googleNotice)}
+        autoHideDuration={6000}
+        onClose={() => setGoogleNotice(null)}
+      >
+        <Alert
+          severity={google === 'connected' ? 'success' : 'warning'}
+          onClose={() => setGoogleNotice(null)}
+        >
+          {googleNotice}
+        </Alert>
+      </Snackbar>
 
       <Snackbar open={Boolean(error)} onClose={clearError}>
         <Alert severity="error" onClose={clearError}>

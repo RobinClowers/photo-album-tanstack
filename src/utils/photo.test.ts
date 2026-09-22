@@ -4,6 +4,7 @@ import {
   buildPhotoPath,
   buildPhotoSrcSet,
   type PhotoWithVersions,
+  photoObjectKeys,
 } from './photo'
 
 function version(
@@ -48,13 +49,13 @@ function photo(versions: PhotoVersion[]): PhotoWithVersions {
   }
 }
 
-const DEFAULT_BASE = 'https://s3.amazonaws.com/robin-photos/'
+const DEFAULT_BASE = 'https://img.robinclowers.com/'
 
 describe('buildPhotoPath', () => {
   it('builds <base>/<album path>/<size>/<version filename>', () => {
     const p = photo([version({ size: 'tablet', filename: 'IMG_1_tablet.jpg' })])
     expect(buildPhotoPath(p, 'tablet')).toBe(
-      'https://s3.amazonaws.com/robin-photos/bangkok/tablet/IMG_1_tablet.jpg',
+      'https://img.robinclowers.com/bangkok/tablet/IMG_1_tablet.jpg',
     )
   })
 
@@ -72,14 +73,42 @@ describe('buildPhotoSrcSet', () => {
       version({ size: 'mobile_sm', width: 640, filename: 'a.jpg' }),
     ])
     expect(buildPhotoSrcSet(p)).toBe(
-      'https://s3.amazonaws.com/robin-photos/bangkok/mobile_sm/a.jpg 640w, ' +
-        'https://s3.amazonaws.com/robin-photos/bangkok/desktop/a.jpg 3072w',
+      'https://img.robinclowers.com/bangkok/mobile_sm/a.jpg 640w, ' +
+        'https://img.robinclowers.com/bangkok/desktop/a.jpg 3072w',
     )
   })
 
   it('is undefined when only the original exists', () => {
     const p = photo([version({ size: 'original', width: 6000 })])
     expect(buildPhotoSrcSet(p)).toBeUndefined()
+  })
+})
+
+describe('photoObjectKeys', () => {
+  it('returns one key per version, deduplicated', () => {
+    const p = photo([
+      version({ size: 'original', filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: 'a.jpg' }),
+    ])
+    expect(photoObjectKeys(p, p.versions)).toEqual([
+      'bangkok/original/a.jpg',
+      'bangkok/desktop/a.jpg',
+    ])
+  })
+
+  it('skips versions missing a size or filename', () => {
+    const p = photo([
+      version({ size: null, filename: 'a.jpg' }),
+      version({ size: 'desktop', filename: null }),
+      version({ size: 'mobile_sm', filename: 'a.jpg' }),
+    ])
+    expect(photoObjectKeys(p, p.versions)).toEqual(['bangkok/mobile_sm/a.jpg'])
+  })
+
+  it('returns nothing for a photo without a path', () => {
+    const p = { ...photo([version({ size: 'desktop' })]), path: null }
+    expect(photoObjectKeys(p, p.versions)).toEqual([])
   })
 })
 
@@ -101,7 +130,7 @@ describe('BASE_PHOTO_PATH', () => {
     vi.resetModules()
   })
 
-  it('falls back to the production bucket when unset', async () => {
+  it('falls back to the production image domain when unset', async () => {
     const { BASE_PHOTO_PATH } = await importWithBase()
     expect(BASE_PHOTO_PATH).toBe(DEFAULT_BASE)
   })

@@ -60,7 +60,7 @@ export const photos = sqliteTable(
 export const photoVersions = sqliteTable(
   'photo_versions',
   {
-    id: integer('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     size: text('size'),
     mimeType: text('mime_type'),
     width: integer('width'),
@@ -72,6 +72,68 @@ export const photoVersions = sqliteTable(
   },
   (table) => ({
     photoIdIdx: index('idx_photo_versions_photo_id').on(table.photoId),
+    // One row per size; the pipeline upserts on this pair.
+    photoIdSizeIdx: uniqueIndex('idx_photo_versions_photo_id_size').on(
+      table.photoId,
+      table.size,
+    ),
+  }),
+)
+
+/**
+ * A batch of pipeline work: reprocessing an album's variants, or (PR 5) a
+ * Google Photos import. Progress is derived from import_items, not stored.
+ */
+export const imports = sqliteTable(
+  'imports',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    albumId: integer('album_id'),
+    /** 'reprocess' | 'google' */
+    kind: text('kind').notNull(),
+    /** ImportStatus in src/db/imports.ts: picking | running | done | failed | cancelled */
+    status: text('status').notNull().default('running'),
+    createdByUserId: integer('created_by_user_id'),
+    error: text('error'),
+    googleSessionId: text('google_session_id'),
+    googleSessionExpiresAt: text('google_session_expires_at'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    finishedAt: text('finished_at'),
+  },
+  (table) => ({
+    albumIdIdx: index('idx_imports_album_id').on(table.albumId),
+  }),
+)
+
+/**
+ * One unit of queue work. The queue message carries only the item id; the
+ * row is the source of truth for what to do (`payload`), how often it has
+ * been tried, and why it last failed, so a lost or expired message can be
+ * re-enqueued from the table.
+ */
+export const importItems = sqliteTable(
+  'import_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    importId: integer('import_id').notNull(),
+    photoId: integer('photo_id'),
+    filename: text('filename'),
+    googleMediaId: text('google_media_id'),
+    /** 'queued' | 'processing' | 'done' | 'failed' */
+    status: text('status').notNull().default('queued'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    /** JSON, see ImportItemPayload in src/server/pipeline/items.ts */
+    payload: text('payload').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    startedAt: text('started_at'),
+    finishedAt: text('finished_at'),
+  },
+  (table) => ({
+    importIdIdx: index('idx_import_items_import_id').on(table.importId),
+    statusIdx: index('idx_import_items_status').on(table.status),
   }),
 )
 
@@ -116,23 +178,30 @@ export const users = sqliteTable(
   }),
 )
 
+/**
+ * One Google OAuth grant per user for the Photos Picker scope. The tokens
+ * (access, refresh, expiry) are one AES-GCM sealed JSON blob, see
+ * src/server/token-crypto.ts. Rebuilt from the Rails attr_encrypted layout in
+ * migration 0003; the legacy rows were unreadable without the Rails keys.
+ */
 export const googleAuthorizations = sqliteTable(
   'google_authorizations',
   {
-    id: integer('id').notNull(),
-    scope: text('scope'),
-    tokenType: text('token_type'),
-    encryptedAccessToken: text('encrypted_access_token'),
-    encryptedAccessTokenIv: text('encrypted_access_token_iv'),
-    encryptedRefreshToken: text('encrypted_refresh_token'),
-    encryptedRefreshTokenIv: text('encrypted_refresh_token_iv'),
-    expiresAt: text('expires_at'),
-    userId: integer('user_id'),
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id').notNull(),
+    /** Space-separated scopes Google reported as granted. */
+    scope: text('scope').notNull(),
+    /** Sealed JSON: { accessToken, refreshToken, expiresAt }. */
+    encryptedTokens: text('encrypted_tokens').notNull(),
+    /** Access token expiry, ISO 8601; duplicated outside the blob for queries. */
+    expiresAt: text('expires_at').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({
-    userIdIdx: index('idx_google_authorizations_user_id').on(table.userId),
+    userIdIdx: uniqueIndex('idx_google_authorizations_user_id').on(
+      table.userId,
+    ),
   }),
 )
 
@@ -184,6 +253,10 @@ export type PlusOne = typeof plusOnes.$inferSelect
 export type NewPlusOne = typeof plusOnes.$inferInsert
 export type Redirect = typeof redirects.$inferSelect
 export type NewRedirect = typeof redirects.$inferInsert
+export type Import = typeof imports.$inferSelect
+export type NewImport = typeof imports.$inferInsert
+export type ImportItem = typeof importItems.$inferSelect
+export type NewImportItem = typeof importItems.$inferInsert
 
 export const albumsRelations = relations(albums, ({ one, many }) => ({
   cover_photo: one(photos, {
@@ -204,6 +277,25 @@ export const photosRelations = relations(photos, ({ one, many }) => ({
 export const photoVersionsRelations = relations(photoVersions, ({ one }) => ({
   photo: one(photos, {
     fields: [photoVersions.photoId],
+    references: [photos.id],
+  }),
+}))
+
+export const importsRelations = relations(imports, ({ one, many }) => ({
+  album: one(albums, {
+    fields: [imports.albumId],
+    references: [albums.id],
+  }),
+  items: many(importItems),
+}))
+
+export const importItemsRelations = relations(importItems, ({ one }) => ({
+  import: one(imports, {
+    fields: [importItems.importId],
+    references: [imports.id],
+  }),
+  photo: one(photos, {
+    fields: [importItems.photoId],
     references: [photos.id],
   }),
 }))
