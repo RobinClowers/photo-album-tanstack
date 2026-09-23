@@ -52,8 +52,10 @@ bun run cf-typegen   # Generate Cloudflare Workers types
 - **TanStack Router** - File-based routing with TypeScript support
 - **React 19.2.0** - Latest React with hooks and concurrent features
 - **TypeScript** - Strict configuration with ES2022 target
-- **MUI v7.3.7** - Primary UI component library with Pigment CSS
-- **Tailwind CSS v4** - Utility-first CSS for layouts
+- **StyleX** (`@stylexjs/stylex`, built by `@stylexjs/unplugin`) - styling for
+  all new code; **Base UI** (`@base-ui/react`) - unstyled accessible primitives
+- **MUI v7 with Pigment CSS** - legacy, being migrated away from component by
+  component; do not add new MUI usage
 - **Cloudflare Workers** - Deployment target
 
 ### Project Structure
@@ -166,28 +168,58 @@ const getAlbums = createServerFn({
 
 ### Styling Patterns
 
-#### MUI with Pigment CSS
+New UI is styled with StyleX and built on Base UI primitives. MUI + Pigment
+remain only in components not yet migrated.
+
+#### StyleX
 
 ```typescript
-// Use sx prop for component-level styling
-<Card
-  sx={{
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    '&:hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: 4,
-    },
-  }}
->
+import * as stylex from '@stylexjs/stylex'
+import { breakpoints } from '@/styles/breakpoints.stylex'
+import { colors, elevation, space } from '@/styles/tokens.stylex'
+
+const styles = stylex.create({
+  card: {
+    padding: { default: space.s2, [breakpoints.smUp]: space.s3 },
+    boxShadow: elevation.e1,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: colors.divider,
+    transition: 'transform 0.2s',
+    // Pseudo-classes and media queries are conditions inside a property.
+    transform: { default: null, ':hover': 'translateY(-4px)' },
+  },
+})
+
+export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
+  return <div {...stylex.props(styles.card, xstyle)} />
+}
 ```
 
-#### Tailwind for Layout
-
-```typescript
-// Use Tailwind for layout utilities
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-```
+- Tokens live in `src/styles/tokens.stylex.ts` (MUI default theme values:
+  palette, 8px `space` grid, `radii`, `elevation` shadows, type scale, motion,
+  z-index) and `src/styles/breakpoints.stylex.ts` (MUI xs/sm/md/lg/xl media
+  queries via `defineConsts`). Use them instead of literals. `.stylex.ts` files
+  may only export `defineVars` / `defineConsts`.
+- Always `import * as stylex from '@stylexjs/stylex'`; call `stylex.create` at
+  module top level. Accept an `xstyle?: stylex.StyleXStyles` prop for caller
+  overrides and pass it last to `stylex.props`.
+- **No border shorthands in `stylex.create`.** StyleX silently drops `border`,
+  `borderTop/Right/Bottom/Left`, `borderBlock*` and `borderInline*` (any value,
+  even `'none'` or `0`). Use longhands: `borderWidth`, `borderStyle`,
+  `borderColor`, `borderTopWidth`, ... The Biome plugin
+  `biome-plugins/no-stylex-border-shorthand.grit` enforces this in
+  `bun run check`. Multi-value `padding` / `margin` / `borderRadius` are fine.
+- Never put StyleX styles on MUI components: StyleX output lives in CSS
+  `@layer`s and unlayered MUI/Pigment CSS beats it. Convert whole components.
+- Global base styles go in `src/styles/app.css` inside `@layer reset` (StyleX
+  layers are declared after it). It is side-effect imported from `__root.tsx`;
+  never link it with `?url`, since StyleX appends its build output to it.
+- In dev, StyleX rules are served from `/virtual:stylex.css` and kept fresh by
+  `virtual:stylex:runtime` (both wired up in `__root.tsx`).
+- Tests: vitest compiles StyleX with runtime injection, so component tests can
+  assert `getComputedStyle(el)` for literal values; token references resolve to
+  `var(--...)` strings.
 
 ### Naming Conventions
 
@@ -293,7 +325,7 @@ function AlbumList() {
 - Use semantic HTML elements
 - Implement proper ARIA labels
 - Test with keyboard navigation
-- Use MUI's built-in accessibility features
+- Prefer Base UI primitives for interactive widgets (dialogs, menus, tooltips)
 
 ## Testing Guidelines
 
@@ -413,7 +445,7 @@ const mutation = useMutation({
 - Development server on port 3000
 - Hot module replacement
 - TypeScript with path aliases
-- Pigment CSS integration
+- StyleX via `@stylexjs/unplugin` (Pigment CSS still loaded for legacy MUI)
 - Cloudflare Workers environment
 
 This document serves as the primary reference for maintaining code consistency and leveraging the TanStack ecosystem effectively.

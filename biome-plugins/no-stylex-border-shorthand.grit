@@ -1,0 +1,12 @@
+// StyleX (styleResolution 'property-specificity') silently emits no CSS for
+// border / borderTop / ... / borderBlock* / borderInline* shorthands, whatever
+// the value. Flag them anywhere inside a stylex.create() call.
+// Tested by no-stylex-border-shorthand.test.ts.
+language js
+
+`stylex.create($styles)` where {
+  $styles <: contains bubble pair(key=$key) where {
+    $key <: r"['\"]?(?:border|borderTop|borderRight|borderBottom|borderLeft|borderBlock|borderBlockStart|borderBlockEnd|borderInline|borderInlineStart|borderInlineEnd|borderStart|borderEnd|borderHorizontal|borderVertical)['\"]?",
+    register_diagnostic(span=$key, message="StyleX silently drops `border` / `borderTop` / `borderBlock*` / `borderInline*` shorthands. Use longhands such as borderWidth, borderStyle, borderColor, borderTopWidth.", severity="error")
+  }
+}
