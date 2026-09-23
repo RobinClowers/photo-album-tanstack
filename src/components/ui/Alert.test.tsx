@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Alert } from './Alert'
 import { Button } from './Button'
-import { styleOf } from './test-utils'
+import { declaredStyle, styleOf } from './test-utils'
 
 describe('Alert', () => {
   it('is an alert region with the severity icon', () => {
@@ -55,5 +55,40 @@ describe('Alert', () => {
     )
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  it('mixes the standard colors from the palette light shade, like MUI', () => {
+    // MUI: background lighten(light, 0.9), text darken(light, 0.6), e.g.
+    // success #edf7ed / #1e4620 and error #fdeded / #5f2120.
+    render(
+      <>
+        <Alert severity="success">s</Alert>
+        <Alert severity="info">i</Alert>
+        <Alert severity="warning">w</Alert>
+        <Alert severity="error">e</Alert>
+      </>,
+    )
+    const [success, info, warning, error] = screen.getAllByRole('alert')
+    expect(declaredStyle(success as Element, 'background-color')).toBe(
+      'color-mix(in srgb,#4caf50 10%,white)',
+    )
+    expect(declaredStyle(success as Element, 'color')).toBe(
+      'color-mix(in srgb,#4caf50 40%,black)',
+    )
+    expect(declaredStyle(info as Element, 'color')).toBe(
+      'color-mix(in srgb,#03a9f4 40%,black)',
+    )
+    expect(declaredStyle(warning as Element, 'color')).toBe(
+      'color-mix(in srgb,#ff9800 40%,black)',
+    )
+    expect(declaredStyle(error as Element, 'background-color')).toBe(
+      'color-mix(in srgb,#ef5350 10%,white)',
+    )
+    expect(declaredStyle(error as Element, 'color')).toBe(
+      'color-mix(in srgb,#ef5350 40%,black)',
+    )
+    // The icon keeps the main shade.
+    const icon = (error as Element).querySelector('svg')?.parentElement
+    expect(styleOf(icon as Element, 'color')).toBe('#d32f2f')
   })
 })

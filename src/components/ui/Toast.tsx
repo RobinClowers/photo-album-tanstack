@@ -3,7 +3,6 @@ import * as stylex from '@stylexjs/stylex'
 import { type ReactNode, useEffect, useRef } from 'react'
 import { breakpoints } from '@/styles/breakpoints.stylex'
 import {
-  colors,
   font,
   fontSize,
   fontWeight,
@@ -13,27 +12,28 @@ import {
   radii,
   zIndex,
 } from '@/styles/tokens.stylex'
-import type { AlertSeverity } from './Alert'
-import {
-  CloseIcon,
-  ErrorOutlineIcon,
-  InfoOutlinedIcon,
-  ReportProblemOutlinedIcon,
-  SuccessOutlinedIcon,
-} from './Icon'
+import { CloseIcon } from './Icon'
 import { IconButton } from './IconButton'
+import {
+  type AlertSeverity,
+  alertParts,
+  SEVERITY_ICON,
+  SEVERITY_ICON_COLOR,
+  severityStyles,
+} from './severity'
 
 const SEVERITIES: AlertSeverity[] = ['success', 'info', 'warning', 'error']
 
 const severityOf = (type: string | undefined): AlertSeverity =>
   SEVERITIES.includes(type as AlertSeverity) ? (type as AlertSeverity) : 'info'
 
-const ICON: Record<AlertSeverity, ReactNode> = {
-  success: <SuccessOutlinedIcon fontSize="inherit" />,
-  info: <InfoOutlinedIcon fontSize="inherit" />,
-  warning: <ReportProblemOutlinedIcon fontSize="inherit" />,
-  error: <ErrorOutlineIcon fontSize="inherit" />,
-}
+/**
+ * Errors and warnings are announced assertively (Base UI renders them as
+ * `alertdialog` plus a `role="alert"` mirror), like the MUI `Alert` inside a
+ * Snackbar they replace; other toasts are announced politely.
+ */
+const priorityOf = (severity: AlertSeverity): 'high' | 'low' =>
+  severity === 'error' || severity === 'warning' ? 'high' : 'low'
 
 // Placement of MUI's default Snackbar (bottom left), and a toast that looks
 // like the standard Alert the app shows inside it.
@@ -74,51 +74,9 @@ const styles = stylex.create({
     transitionDuration: motion.durationEnteringScreen,
     transitionTimingFunction: motion.easeInOut,
   },
-  success: {
-    backgroundColor: `color-mix(in srgb, ${colors.success} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.success} 40%, black)`,
-  },
-  info: {
-    backgroundColor: `color-mix(in srgb, ${colors.info} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.info} 40%, black)`,
-  },
-  warning: {
-    backgroundColor: `color-mix(in srgb, ${colors.warning} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.warning} 40%, black)`,
-  },
-  error: {
-    backgroundColor: `color-mix(in srgb, ${colors.error} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.error} 40%, black)`,
-  },
-  icon: {
-    marginRight: '12px',
-    padding: '7px 0',
-    display: 'flex',
-    fontSize: '22px',
-    opacity: 0.9,
-  },
-  iconSuccess: { color: colors.success },
-  iconInfo: { color: colors.info },
-  iconWarning: { color: colors.warning },
-  iconError: { color: colors.error },
-  message: { padding: '8px 0', minWidth: 0, overflow: 'auto' },
   title: { margin: 0, fontWeight: font.weightMedium },
   description: { margin: 0 },
-  action: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    padding: '4px 0 0 16px',
-    marginLeft: 'auto',
-    marginRight: '-8px',
-  },
 })
-
-const ICON_COLOR = {
-  success: styles.iconSuccess,
-  info: styles.iconInfo,
-  warning: styles.iconWarning,
-  error: styles.iconError,
-} as const
 
 function ToastList() {
   const { toasts } = BaseToast.useToastManager()
@@ -128,18 +86,18 @@ function ToastList() {
       <BaseToast.Root
         key={toast.id}
         toast={toast}
-        {...stylex.props(styles.toast, styles[severity])}
+        {...stylex.props(styles.toast, severityStyles[severity])}
       >
-        <div {...stylex.props(styles.icon, ICON_COLOR[severity])}>
-          {ICON[severity]}
+        <div {...stylex.props(alertParts.icon, SEVERITY_ICON_COLOR[severity])}>
+          {SEVERITY_ICON[severity]}
         </div>
-        <div {...stylex.props(styles.message)}>
+        <div {...stylex.props(alertParts.message)}>
           {toast.title ? (
             <BaseToast.Title {...stylex.props(styles.title)} />
           ) : null}
           <BaseToast.Description {...stylex.props(styles.description)} />
         </div>
-        <div {...stylex.props(styles.action)}>
+        <div {...stylex.props(alertParts.action)}>
           <BaseToast.Close
             aria-label="Close"
             render={
@@ -203,6 +161,7 @@ export function useToast() {
         description: message,
         title,
         type: severity,
+        priority: priorityOf(severity),
         timeout,
         onClose,
       }),
@@ -258,6 +217,7 @@ export function Toast({
       description: children,
       title,
       type: severity,
+      priority: priorityOf(severity),
       timeout,
       onClose: () => {
         // Closed by the user or the timeout, not by `open` turning false.

@@ -83,4 +83,15 @@ describe('Table', () => {
       styleOf(screen.getByRole('cell', { name: 'Summer' }), 'padding'),
     ).toBe('6px 16px')
   })
+
+  it('pads checkbox cells per size like MUI', () => {
+    const { unmount } = render(<Albums />)
+    const medium = screen.getByRole('cell', { name: 'img' })
+    expect(styleOf(medium, 'padding')).toBe('0px 0px 0px 4px')
+    unmount()
+    render(<Albums size="small" />)
+    const small = screen.getByRole('cell', { name: 'img' })
+    expect(styleOf(small, 'padding')).toBe('0px 12px 0px 16px')
+    expect(styleOf(small, 'width')).toBe('24px')
+  })
 })

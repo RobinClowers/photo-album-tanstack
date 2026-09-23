@@ -1,7 +1,6 @@
 import * as stylex from '@stylexjs/stylex'
 import type { ComponentProps, ReactNode } from 'react'
 import {
-  colors,
   font,
   fontSize,
   fontWeight,
@@ -9,16 +8,17 @@ import {
   lineHeight,
   radii,
 } from '@/styles/tokens.stylex'
-import {
-  CloseIcon,
-  ErrorOutlineIcon,
-  InfoOutlinedIcon,
-  ReportProblemOutlinedIcon,
-  SuccessOutlinedIcon,
-} from './Icon'
+import { CloseIcon } from './Icon'
 import { IconButton } from './IconButton'
+import {
+  type AlertSeverity,
+  alertParts,
+  SEVERITY_ICON,
+  SEVERITY_ICON_COLOR,
+  severityStyles,
+} from './severity'
 
-export type AlertSeverity = 'success' | 'info' | 'warning' | 'error'
+export type { AlertSeverity }
 
 export interface AlertProps
   extends Omit<ComponentProps<'div'>, 'className' | 'style'> {
@@ -35,14 +35,6 @@ export interface AlertProps
   xstyle?: stylex.StyleXStyles | undefined
 }
 
-const SEVERITY_ICON: Record<AlertSeverity, ReactNode> = {
-  success: <SuccessOutlinedIcon fontSize="inherit" />,
-  info: <InfoOutlinedIcon fontSize="inherit" />,
-  warning: <ReportProblemOutlinedIcon fontSize="inherit" />,
-  error: <ErrorOutlineIcon fontSize="inherit" />,
-}
-
-// MUI "standard" alerts: background lighten(main, 0.9), text darken(main, 0.6).
 const styles = stylex.create({
   root: {
     display: 'flex',
@@ -55,49 +47,7 @@ const styles = stylex.create({
     letterSpacing: letterSpacing.body2,
     fontWeight: fontWeight.body2,
   },
-  success: {
-    backgroundColor: `color-mix(in srgb, ${colors.success} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.success} 40%, black)`,
-  },
-  info: {
-    backgroundColor: `color-mix(in srgb, ${colors.info} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.info} 40%, black)`,
-  },
-  warning: {
-    backgroundColor: `color-mix(in srgb, ${colors.warning} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.warning} 40%, black)`,
-  },
-  error: {
-    backgroundColor: `color-mix(in srgb, ${colors.error} 10%, white)`,
-    color: `color-mix(in srgb, ${colors.error} 40%, black)`,
-  },
-  icon: {
-    marginRight: '12px',
-    padding: '7px 0',
-    display: 'flex',
-    fontSize: '22px',
-    opacity: 0.9,
-  },
-  iconSuccess: { color: colors.success },
-  iconInfo: { color: colors.info },
-  iconWarning: { color: colors.warning },
-  iconError: { color: colors.error },
-  message: { padding: '8px 0', minWidth: 0, overflow: 'auto' },
-  action: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    padding: '4px 0 0 16px',
-    marginLeft: 'auto',
-    marginRight: '-8px',
-  },
 })
-
-const ICON_COLOR = {
-  success: styles.iconSuccess,
-  info: styles.iconInfo,
-  warning: styles.iconWarning,
-  error: styles.iconError,
-} as const
 
 /** Inline status message (MUI `Alert`, standard variant). */
 export function Alert({
@@ -129,16 +79,16 @@ export function Alert({
     <div
       role={role}
       {...props}
-      {...stylex.props(styles.root, styles[severity], xstyle)}
+      {...stylex.props(styles.root, severityStyles[severity], xstyle)}
     >
       {iconNode !== false && iconNode !== null ? (
-        <div {...stylex.props(styles.icon, ICON_COLOR[severity])}>
+        <div {...stylex.props(alertParts.icon, SEVERITY_ICON_COLOR[severity])}>
           {iconNode}
         </div>
       ) : null}
-      <div {...stylex.props(styles.message)}>{children}</div>
+      <div {...stylex.props(alertParts.message)}>{children}</div>
       {actionNode ? (
-        <div {...stylex.props(styles.action)}>{actionNode}</div>
+        <div {...stylex.props(alertParts.action)}>{actionNode}</div>
       ) : null}
     </div>
   )

@@ -5,7 +5,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Button } from './Button'
 import { OpenInNewIcon } from './Icon'
-import { renderWithRouter } from './test-utils'
+import { renderWithRouter, styleOf, varName } from './test-utils'
+import { tone } from './tone.stylex'
 
 const overrides = stylex.create({ margin: { marginLeft: '8px' } })
 
@@ -143,5 +144,84 @@ describe('Button', () => {
       getComputedStyle(screen.getByRole('button', { name: 'Spaced' }))
         .marginLeft,
     ).toBe('8px')
+  })
+
+  it('paints contained buttons with the palette main and contrast colors', () => {
+    render(
+      <>
+        <Button variant="contained">Primary</Button>
+        <Button variant="contained" color="error">
+          Danger
+        </Button>
+        <Button variant="contained" color="success">
+          Ok
+        </Button>
+      </>,
+    )
+    const primary = screen.getByRole('button', { name: 'Primary' })
+    expect(styleOf(primary, 'background-color')).toBe('#1976d2')
+    expect(styleOf(primary, 'color')).toBe('#fff')
+    const danger = screen.getByRole('button', { name: 'Danger' })
+    expect(styleOf(danger, 'background-color')).toBe('#d32f2f')
+    expect(styleOf(danger, 'color')).toBe('#fff')
+    const ok = screen.getByRole('button', { name: 'Ok' })
+    expect(styleOf(ok, 'background-color')).toBe('#2e7d32')
+  })
+
+  it('paints text and outlined buttons with the palette main color', () => {
+    render(
+      <>
+        <Button>Text</Button>
+        <Button variant="outlined">Outlined</Button>
+        <Button variant="outlined" color="error">
+          Remove
+        </Button>
+      </>,
+    )
+    const text = screen.getByRole('button', { name: 'Text' })
+    expect(styleOf(text, 'color')).toBe('#1976d2')
+    expect(styleOf(text, 'background-color')).toBe('rgba(0, 0, 0, 0)')
+    const outlined = screen.getByRole('button', { name: 'Outlined' })
+    expect(styleOf(outlined, 'color')).toBe('#1976d2')
+    const remove = screen.getByRole('button', { name: 'Remove' })
+    expect(styleOf(remove, 'color')).toBe('#d32f2f')
+    // jsdom cannot cascade `border-color: var(...)`, so check the tone var
+    // that `styles.outlined` reads for its border.
+    expect(styleOf(remove, varName(tone.border))).toBe(
+      'color-mix(in srgb,#d32f2f 50%,transparent)',
+    )
+    expect(styleOf(outlined, varName(tone.border))).toBe(
+      'color-mix(in srgb,#1976d2 50%,transparent)',
+    )
+  })
+
+  it('paints color="inherit" contained buttons grey', () => {
+    render(
+      <Button variant="contained" color="inherit">
+        Grey
+      </Button>,
+    )
+    const grey = screen.getByRole('button', { name: 'Grey' })
+    expect(styleOf(grey, 'background-color')).toBe('#e0e0e0')
+    expect(styleOf(grey, 'color')).toBe('rgba(0, 0, 0, 0.87)')
+  })
+
+  it('greys out disabled contained and outlined buttons', () => {
+    render(
+      <>
+        <Button variant="contained" disabled>
+          Filled
+        </Button>
+        <Button variant="outlined" disabled>
+          Framed
+        </Button>
+      </>,
+    )
+    const filled = screen.getByRole('button', { name: 'Filled' })
+    expect(styleOf(filled, 'background-color')).toBe('rgba(0, 0, 0, 0.12)')
+    expect(styleOf(filled, 'color')).toBe('rgba(0, 0, 0, 0.26)')
+    expect(styleOf(filled, 'box-shadow')).toBe('none')
+    const framed = screen.getByRole('button', { name: 'Framed' })
+    expect(styleOf(framed, 'color')).toBe('rgba(0, 0, 0, 0.26)')
   })
 })

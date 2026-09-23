@@ -57,6 +57,10 @@ const styles = stylex.create({
   head: { lineHeight: '1.5rem', fontWeight: font.weightMedium },
   small: { padding: '6px 16px' },
   checkbox: { width: '48px', padding: '0 0 0 4px' },
+  // MUI's small-size `&.MuiTableCell-paddingCheckbox` rule, which beats the
+  // plain checkbox rule. (MUI also zeroes its children's padding; the app's
+  // checkbox cells hold an Avatar, which has none.)
+  checkboxSmall: { width: '24px', padding: '0 12px 0 16px' },
   none: { padding: 0 },
   left: { textAlign: 'left' },
   center: { textAlign: 'center' },
@@ -156,6 +160,7 @@ export function TableCell({
         section === 'head' && styles.head,
         size === 'small' && styles.small,
         padding === 'checkbox' && styles.checkbox,
+        padding === 'checkbox' && size === 'small' && styles.checkboxSmall,
         padding === 'none' && styles.none,
         align && styles[align],
         xstyle,

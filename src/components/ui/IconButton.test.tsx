@@ -83,5 +83,35 @@ describe('IconButton', () => {
     )
     const link = await screen.findByRole('link', { name: 'Home' })
     expect(link.getAttribute('href')).toBe('/')
+    expect(styleOf(link, 'color')).toBe('currentColor')
+  })
+
+  it('paints the default grey, palette colors and inherit', () => {
+    render(
+      <div style={{ color: 'rgb(1, 2, 3)' }}>
+        <IconButton aria-label="default">
+          <DeleteIcon />
+        </IconButton>
+        <IconButton aria-label="error" color="error">
+          <DeleteIcon />
+        </IconButton>
+        <IconButton aria-label="primary" color="primary">
+          <DeleteIcon />
+        </IconButton>
+        <IconButton aria-label="inherit" color="inherit">
+          <DeleteIcon />
+        </IconButton>
+        <IconButton aria-label="disabled" color="error" disabled>
+          <DeleteIcon />
+        </IconButton>
+      </div>,
+    )
+    const color = (name: string) =>
+      styleOf(screen.getByRole('button', { name }), 'color')
+    expect(color('default')).toBe('rgba(0, 0, 0, 0.54)')
+    expect(color('error')).toBe('#d32f2f')
+    expect(color('primary')).toBe('#1976d2')
+    expect(color('inherit')).toBe('currentColor')
+    expect(color('disabled')).toBe('rgba(0, 0, 0, 0.26)')
   })
 })
