@@ -64,6 +64,7 @@ bun run cf-typegen   # Generate Cloudflare Workers types
 src/
 ├── routes/          # File-based routing (TanStack Router)
 ├── components/      # Reusable React components
+│   └── ui/          # StyleX + Base UI primitives (Button, Text, Dialog, ...)
 ├── styles.css       # Global styles
 └── api/            # Server functions and API endpoints
 ```
@@ -219,7 +220,38 @@ export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
   `virtual:stylex:runtime` (both wired up in `__root.tsx`).
 - Tests: vitest compiles StyleX with runtime injection, so component tests can
   assert `getComputedStyle(el)` for literal values; token references resolve to
-  `var(--...)` strings.
+  `var(--...)` strings (`styleOf` in `src/components/ui/test-utils.tsx`
+  resolves them to the token's value). jsdom drops shorthands containing a
+  `var()` (e.g. `padding: var(--x)`), so assert longhands for those, and
+  StyleX minifies values (`'translate(14px,-9px) scale(.75)'`).
+
+#### UI primitives (`src/components/ui`)
+
+Build pages from these instead of MUI; import from `@/components/ui`. They
+mirror the MUI components (and default theme) they replace, so props look
+familiar: `Button` (`variant`, `size`, `color`, `startIcon`, `href`),
+`IconButton`, `Text` (Typography: `variant`, `color`, `as`, `gutterBottom`),
+`Container`, `Stack` (`direction` / `gap` in 8px units, responsive objects
+like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
+`CardContent`, `CardActions`), `Alert`, `Chip`, `TextField`, `Table*`,
+`LinearProgress` / `CircularProgress`, `Dialog*`, `Menu` / `MenuItem`,
+`Tooltip`, `Toast`, `Avatar`, `Link` / `Anchor` and the `*Icon` set.
+`/admin/ui` renders every primitive and variant for manual testing.
+
+- Every primitive takes `xstyle` for layout overrides (margins, flex, width);
+  there is no `sx`. `className` is not supported: two `stylex.props` results
+  concatenated as class strings do not override each other predictably.
+- Router links: `<Link to="/albums/$slug" params={{ slug }}>` (type-safe,
+  MUI Link look); buttons and text render as links via
+  `render={<RouterLink to="/admin" />}` (TanStack's own `Link`, never the
+  styled ui `Link`, whose classes would clash) or `href="..."`.
+- Palette colors go through the `tone` vars (`tone.stylex.ts` / `tone.ts`):
+  apply `toneStyles[color]` first, then read `tone.main`, `tone.hover`, ...
+- Toasts need a `ToastProvider` above them. `<Toast open={Boolean(error)}
+  severity="error" onClose={clearError}>` replaces the Snackbar + Alert
+  pattern; `useToast().show({ message })` is the imperative form.
+- While MUI's `CssBaseline` is loaded, its unlayered `* { box-sizing:
+  inherit }` beats StyleX, so do not rely on `boxSizing: 'content-box'`.
 
 ### Naming Conventions
 
