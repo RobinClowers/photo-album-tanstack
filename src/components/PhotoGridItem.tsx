@@ -1,5 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import { Link } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
 import {
   buildPhotoPath,
   buildPhotoSrcSet,
@@ -11,6 +12,11 @@ interface PhotoGridItemProps {
   /** Width / height of the original, used to size the tile in its row. */
   aspectRatio: number
   albumSlug: string
+  /**
+   * Above-the-fold tiles load eagerly at high priority and skip the fade-in,
+   * so they can paint from the server HTML before hydration.
+   */
+  priority?: boolean
 }
 
 // Keep in sync with --row-height in PhotoGrid. Tiles grow somewhat past their
@@ -23,7 +29,16 @@ export default function PhotoGridItem({
   photo,
   aspectRatio,
   albumSlug,
+  priority = false,
 }: PhotoGridItemProps) {
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [loaded, setLoaded] = useState(priority)
+
+  // An image that finished loading before hydration never fires onLoad.
+  useEffect(() => {
+    if (imgRef.current?.complete) setLoaded(true)
+  }, [])
+
   const mobileWidth = Math.round(aspectRatio * ROW_HEIGHT_MOBILE * ROW_GROWTH)
   const desktopWidth = Math.round(aspectRatio * ROW_HEIGHT * ROW_GROWTH)
 
@@ -43,6 +58,8 @@ export default function PhotoGridItem({
         maxHeight: 'calc(var(--row-height) * 1.5)',
         overflow: 'hidden',
         borderRadius: 1,
+        // Placeholder while the photo loads.
+        bgcolor: 'grey.200',
       }}
     >
       <Link
@@ -52,6 +69,12 @@ export default function PhotoGridItem({
       >
         <Box
           component="img"
+          ref={imgRef}
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          data-loaded={loaded}
           src={buildPhotoPath(photo, 'tablet')}
           srcSet={buildPhotoSrcSet(photo)}
           sizes={`(max-width: 599px) min(100vw, ${mobileWidth}px), ${desktopWidth}px`}
@@ -61,6 +84,8 @@ export default function PhotoGridItem({
             height: '100%',
             objectFit: 'cover',
             verticalAlign: 'bottom',
+            transition: 'opacity 0.3s ease-in',
+            '&[data-loaded="false"]': { opacity: 0 },
           }}
         />
         {photo.caption && (

@@ -2,6 +2,11 @@ import { Box } from '@mui/material'
 import type { PhotoWithVersions } from '@/utils/photo'
 import PhotoGridItem from './PhotoGridItem'
 
+// Enough to fill the first screen on a large desktop: the grid is capped at
+// the xl container width (~4 tiles per row) and rows are 320-480px tall, so a
+// 1440px-tall viewport shows about three rows.
+const PRIORITY_COUNT = 12
+
 interface PhotoGridProps {
   photos: PhotoWithVersions[]
   albumSlug: string
@@ -38,7 +43,7 @@ export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
         },
       }}
     >
-      {photos.map((photo) => {
+      {photos.map((photo, index) => {
         // Photos without dimensions can't be laid out, so they are skipped.
         const ratio = aspectRatio(photo)
         if (!ratio) return null
@@ -48,6 +53,7 @@ export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
             photo={photo}
             aspectRatio={ratio}
             albumSlug={albumSlug}
+            priority={index < PRIORITY_COUNT}
           />
         )
       })}
