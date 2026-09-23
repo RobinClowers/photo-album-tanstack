@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import type { PhotoWithVersions } from '@/utils/photo'
+import type { GridPhoto } from '@/utils/publicPhoto'
 import PhotoGridItem from './PhotoGridItem'
 
 // Enough to fill the first screen on a large desktop: the grid is capped at
@@ -8,14 +8,8 @@ import PhotoGridItem from './PhotoGridItem'
 const PRIORITY_COUNT = 12
 
 interface PhotoGridProps {
-  photos: PhotoWithVersions[]
+  photos: GridPhoto[]
   albumSlug: string
-}
-
-function aspectRatio(photo: PhotoWithVersions): number | null {
-  const original = photo.versions.find((v) => v.size === 'original')
-  if (!original?.width || !original?.height) return null
-  return original.width / original.height
 }
 
 /**
@@ -43,20 +37,14 @@ export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
         },
       }}
     >
-      {photos.map((photo, index) => {
-        // Photos without dimensions can't be laid out, so they are skipped.
-        const ratio = aspectRatio(photo)
-        if (!ratio) return null
-        return (
-          <PhotoGridItem
-            key={photo.id}
-            photo={photo}
-            aspectRatio={ratio}
-            albumSlug={albumSlug}
-            priority={index < PRIORITY_COUNT}
-          />
-        )
-      })}
+      {photos.map((photo, index) => (
+        <PhotoGridItem
+          key={photo.id}
+          photo={photo}
+          albumSlug={albumSlug}
+          priority={index < PRIORITY_COUNT}
+        />
+      ))}
     </Box>
   )
 }

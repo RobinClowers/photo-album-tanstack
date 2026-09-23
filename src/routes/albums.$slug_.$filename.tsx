@@ -4,7 +4,6 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { Box, Container, IconButton, Typography } from '@mui/material'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getPhotoDetailsFn } from '@/api/albums'
-import { buildPhotoPath } from '@/utils/photo'
 
 export const Route = createFileRoute('/albums/$slug_/$filename')({
   component: PhotoPage,
@@ -20,12 +19,8 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
   head: ({ loaderData }) => {
     if (!loaderData?.photo) return { meta: [] }
     const { photo } = loaderData
-    const albumTitle = photo.album?.title || 'Album'
-    const originalUrl = buildPhotoPath(photo, 'original')
-
-    // Determine the width and height for og:image from the original version
-    const originalVersion =
-      photo.versions?.find((v) => v.size === 'original') || photo.versions?.[0]
+    const albumTitle = photo.albumTitle || 'Album'
+    const { original } = photo
 
     // Note: process.env is not directly available in Vite/Cloudflare without setup, so using a relative or placeholder URL
     // for og:url might be necessary, but typically you need the absolute URL for OpenGraph.
@@ -43,18 +38,12 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
           property: 'og:description',
           content: photo.caption || `A photo from ${albumTitle}.`,
         },
-        { property: 'og:image', content: originalUrl },
-        { property: 'og:image:secure_url', content: originalUrl },
-        ...(originalVersion
+        { property: 'og:image', content: original.src },
+        { property: 'og:image:secure_url', content: original.src },
+        ...(original.width && original.height
           ? [
-              {
-                property: 'og:image:width',
-                content: String(originalVersion.width),
-              },
-              {
-                property: 'og:image:height',
-                content: String(originalVersion.height),
-              },
+              { property: 'og:image:width', content: String(original.width) },
+              { property: 'og:image:height', content: String(original.height) },
             ]
           : []),
       ],
@@ -66,11 +55,6 @@ function PhotoPage() {
   const { photo, previousPhotoFilename, nextPhotoFilename } =
     Route.useLoaderData()
   const { slug } = Route.useParams()
-
-  // Use a sensible high-res version for the main display, e.g. 'desktop' or 'original'
-  // But since we want to be performant, let's look for a large version if available, or fallback to original.
-  const displayUrl =
-    buildPhotoPath(photo, 'desktop') || buildPhotoPath(photo, 'original')
 
   return (
     <Box
@@ -92,7 +76,7 @@ function PhotoPage() {
             </IconButton>
           </Link>
           <Typography variant="h6" component="h1">
-            Back to {photo.album?.title || 'Album'}
+            Back to {photo.albumTitle || 'Album'}
           </Typography>
         </Box>
 
@@ -122,7 +106,7 @@ function PhotoPage() {
 
           <Box
             component="img"
-            src={displayUrl}
+            src={photo.src}
             alt={photo.caption || ''}
             sx={{
               maxWidth: 'calc(100% - 120px)',

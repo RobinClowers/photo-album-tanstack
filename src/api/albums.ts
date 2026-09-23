@@ -4,9 +4,13 @@ import { createDB } from '@/db'
 import {
   getAlbumDetails as getAlbumDetailsQuery,
   getAlbumsWithCoverPhoto,
-  getPhotosWithAlbum,
 } from '@/db/queries'
 import { getCurrentAdmin } from '@/server/auth'
+import {
+  toCoverPhoto,
+  toGridPhotos,
+  toPhotoPageData,
+} from '@/utils/publicPhoto'
 
 /**
  * Unpublished albums are drafts, reachable by URL only for the signed-in
@@ -21,25 +25,14 @@ export const getAllAlbums = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const db = createDB(env.photo_album)
-  return await getAlbumsWithCoverPhoto(db)
+  const albums = await getAlbumsWithCoverPhoto(db)
+  return albums.map((album) => ({
+    id: album.id,
+    slug: album.slug || '',
+    title: album.title || '',
+    cover_photo: toCoverPhoto(album.cover_photo),
+  }))
 })
-
-export const getAllPhotos = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  const db = createDB(env.photo_album)
-  return await getPhotosWithAlbum(db)
-})
-
-export const getPhotosByAlbumId = createServerFn({
-  method: 'GET',
-})
-  .inputValidator((data: { albumId: string }) => data)
-  .handler(async ({ data }) => {
-    const db = createDB(env.photo_album)
-    const albumId = Number(data.albumId) || 0
-    return await getPhotosWithAlbum(db, albumId)
-  })
 
 export const getAlbumDetails = createServerFn({
   method: 'GET',
@@ -47,7 +40,17 @@ export const getAlbumDetails = createServerFn({
   .inputValidator((data: { slug: string }) => data)
   .handler(async ({ data }) => {
     const db = createDB(env.photo_album)
-    return await getAlbumDetailsQuery(db, data.slug, await canSeeUnpublished())
+    const album = await getAlbumDetailsQuery(
+      db,
+      data.slug,
+      await canSeeUnpublished(),
+    )
+    if (!album) return null
+    return {
+      title: album.title || '',
+      slug: album.slug || '',
+      photos: toGridPhotos(album.photos),
+    }
   })
 
 export const getPhotoDetailsFn = createServerFn({
@@ -57,10 +60,12 @@ export const getPhotoDetailsFn = createServerFn({
   .handler(async ({ data }) => {
     const db = createDB(env.photo_album)
     const { getPhotoBySlugAndFilename } = await import('@/db/queries')
-    return await getPhotoBySlugAndFilename(
+    const result = await getPhotoBySlugAndFilename(
       db,
       data.slug,
       data.filename,
       await canSeeUnpublished(),
     )
+    if (!result) return null
+    return { ...result, photo: toPhotoPageData(result.photo) }
   })

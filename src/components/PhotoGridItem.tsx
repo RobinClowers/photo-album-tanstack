@@ -1,16 +1,10 @@
 import { Box, Typography } from '@mui/material'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import {
-  buildPhotoPath,
-  buildPhotoSrcSet,
-  type PhotoWithVersions,
-} from '@/utils/photo'
+import type { GridPhoto } from '@/utils/publicPhoto'
 
 interface PhotoGridItemProps {
-  photo: PhotoWithVersions
-  /** Width / height of the original, used to size the tile in its row. */
-  aspectRatio: number
+  photo: GridPhoto
   albumSlug: string
   /**
    * Above-the-fold tiles load eagerly at high priority and skip the fade-in,
@@ -27,7 +21,6 @@ const ROW_GROWTH = 1.25
 
 export default function PhotoGridItem({
   photo,
-  aspectRatio,
   albumSlug,
   priority = false,
 }: PhotoGridItemProps) {
@@ -39,6 +32,7 @@ export default function PhotoGridItem({
     if (imgRef.current?.complete) setLoaded(true)
   }, [])
 
+  const { aspectRatio } = photo
   const mobileWidth = Math.round(aspectRatio * ROW_HEIGHT_MOBILE * ROW_GROWTH)
   const desktopWidth = Math.round(aspectRatio * ROW_HEIGHT * ROW_GROWTH)
 
@@ -64,7 +58,7 @@ export default function PhotoGridItem({
     >
       <Link
         to="/albums/$slug/$filename"
-        params={{ slug: albumSlug, filename: photo.filename || '' }}
+        params={{ slug: albumSlug, filename: photo.filename }}
         style={{ display: 'block', width: '100%', height: '100%' }}
       >
         <Box
@@ -75,8 +69,8 @@ export default function PhotoGridItem({
           decoding="async"
           onLoad={() => setLoaded(true)}
           data-loaded={loaded}
-          src={buildPhotoPath(photo, 'tablet')}
-          srcSet={buildPhotoSrcSet(photo)}
+          src={photo.src}
+          srcSet={photo.srcSet}
           sizes={`(max-width: 599px) min(100vw, ${mobileWidth}px), ${desktopWidth}px`}
           alt={photo.caption || ''}
           sx={{

@@ -2,22 +2,10 @@ import { Box, Card, CardMedia, Container, Typography } from '@mui/material'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { getAllAlbums } from '@/api/albums'
-import { buildPhotoPath, buildPhotoSrcSet } from '@/utils/photo'
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
-  loader: async () => {
-    const albums = await getAllAlbums()
-
-    return {
-      albums: albums.map((album) => ({
-        id: String(album.id),
-        slug: album.slug || '',
-        title: album.title || '',
-        cover_photo: album.cover_photo,
-      })),
-    }
-  },
+  loader: async () => ({ albums: await getAllAlbums() }),
 })
 
 function IndexPage() {
@@ -57,8 +45,8 @@ function IndexPage() {
                   component="img"
                   height="180"
                   width="240"
-                  image={buildPhotoPath(album.cover_photo, 'mobile_sm')}
-                  srcSet={buildPhotoSrcSet(album.cover_photo)}
+                  image={album.cover_photo.src}
+                  srcSet={album.cover_photo.srcSet}
                   sizes="240px"
                   alt={album.title}
                   sx={{ objectFit: 'cover' }}
