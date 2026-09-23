@@ -8,28 +8,39 @@ import {
 
 interface PhotoGridItemProps {
   photo: PhotoWithVersions
-  dimensions: {
-    top: number
-    left: number
-    width: number
-    height: number
-  }
+  /** Width / height of the original, used to size the tile in its row. */
+  aspectRatio: number
   albumSlug: string
 }
 
+// Keep in sync with --row-height in PhotoGrid. Tiles grow somewhat past their
+// basis to fill a row, so the srcset hint allows for that.
+const ROW_HEIGHT_MOBILE = 200
+const ROW_HEIGHT = 320
+const ROW_GROWTH = 1.25
+
 export default function PhotoGridItem({
   photo,
-  dimensions,
+  aspectRatio,
   albumSlug,
 }: PhotoGridItemProps) {
+  const mobileWidth = Math.round(aspectRatio * ROW_HEIGHT_MOBILE * ROW_GROWTH)
+  const desktopWidth = Math.round(aspectRatio * ROW_HEIGHT * ROW_GROWTH)
+
   return (
     <Box
+      // Pigment extracts sx at build time, so the per-photo value is passed
+      // as a CSS variable rather than interpolated into the sx styles.
+      style={{ '--aspect-ratio': aspectRatio } as React.CSSProperties}
       sx={{
-        position: 'absolute',
-        top: dimensions.top,
-        left: dimensions.left,
-        width: dimensions.width,
-        height: dimensions.height,
+        position: 'relative',
+        flex: 'var(--aspect-ratio) 1 calc(var(--row-height) * var(--aspect-ratio))',
+        minWidth: 0,
+        aspectRatio: 'var(--aspect-ratio)',
+        // A row that wraps early (typically before a panorama) stretches its
+        // few tiles across the full width; cap the height and let the image
+        // crop rather than rendering one enormous tile.
+        maxHeight: 'calc(var(--row-height) * 1.5)',
         overflow: 'hidden',
         borderRadius: 1,
       }}
@@ -43,7 +54,7 @@ export default function PhotoGridItem({
           component="img"
           src={buildPhotoPath(photo, 'tablet')}
           srcSet={buildPhotoSrcSet(photo)}
-          sizes={`${dimensions.width}px`}
+          sizes={`(max-width: 599px) min(100vw, ${mobileWidth}px), ${desktopWidth}px`}
           alt={photo.caption || ''}
           sx={{
             width: '100%',
