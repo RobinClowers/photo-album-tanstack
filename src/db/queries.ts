@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNotNull } from 'drizzle-orm'
 import type { DB } from './index'
 import {
   type Album,
@@ -50,6 +50,15 @@ export async function getAlbumBySlug(
   return album
 }
 
+/**
+ * The order photos appear in an album. The album grid and the photo page's
+ * previous/next links must both use it, or navigation drifts from the grid.
+ * id breaks ties so photos sharing (or missing) takenAt keep a stable order.
+ */
+function albumPhotoOrder(p: typeof photos._.columns) {
+  return [asc(p.takenAt), asc(p.id)]
+}
+
 export async function getAlbumDetails(
   db: DB,
   slug: string,
@@ -67,7 +76,7 @@ export async function getAlbumDetails(
         with: {
           versions: true,
         },
-        orderBy: (photos) => [photos.takenAt],
+        orderBy: albumPhotoOrder,
       },
     },
   })
@@ -95,20 +104,15 @@ export async function getPhotoBySlugAndFilename(
 
   const allPhotos = await db.query.photos.findMany({
     where: eq(photos.albumId, album.id),
-    orderBy: (photos, { desc }) => [desc(photos.takenAt)],
-    columns: { filename: true },
+    orderBy: albumPhotoOrder,
+    columns: { id: true, filename: true },
   })
 
-  const currentIndex = allPhotos.findIndex((p) => p.filename === filename)
-  let previousPhotoFilename = null
-  let nextPhotoFilename = null
-
-  if (currentIndex > 0) {
-    previousPhotoFilename = allPhotos[currentIndex - 1]?.filename ?? null
-  }
-  if (currentIndex !== -1 && currentIndex < allPhotos.length - 1) {
-    nextPhotoFilename = allPhotos[currentIndex + 1]?.filename ?? null
-  }
+  const currentIndex = allPhotos.findIndex((p) => p.id === photo.id)
+  const previousPhotoFilename =
+    currentIndex > 0 ? (allPhotos[currentIndex - 1]?.filename ?? null) : null
+  const nextPhotoFilename =
+    currentIndex !== -1 ? (allPhotos[currentIndex + 1]?.filename ?? null) : null
 
   return { photo, previousPhotoFilename, nextPhotoFilename }
 }
