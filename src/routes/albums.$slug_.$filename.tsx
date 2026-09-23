@@ -4,8 +4,10 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { Box, Container, IconButton, Typography } from '@mui/material'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getPhotoDetailsFn } from '@/api/albums'
+import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/albums/$slug_/$filename')({
+  headers: publicPageHeaders,
   component: PhotoPage,
   loader: async ({ params }) => {
     const data = await getPhotoDetailsFn({

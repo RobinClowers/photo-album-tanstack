@@ -2,8 +2,10 @@ import { Box, Card, CardMedia, Container, Typography } from '@mui/material'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { getAllAlbums } from '@/api/albums'
+import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/')({
+  headers: publicPageHeaders,
   component: IndexPage,
   loader: async () => ({ albums: await getAllAlbums() }),
 })

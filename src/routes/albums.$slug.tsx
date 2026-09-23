@@ -2,8 +2,10 @@ import { Container, Typography } from '@mui/material'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { getAlbumDetails } from '@/api/albums'
 import PhotoGrid from '@/components/PhotoGrid'
+import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/albums/$slug')({
+  headers: publicPageHeaders,
   component: AlbumPage,
   loader: async ({ params }) => {
     const album = await getAlbumDetails({ data: { slug: params.slug } })
