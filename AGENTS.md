@@ -250,8 +250,9 @@ like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
 - Toasts need a `ToastProvider` above them. `<Toast open={Boolean(error)}
   severity="error" onClose={clearError}>` replaces the Snackbar + Alert
   pattern; `useToast().show({ message })` is the imperative form.
-- While MUI's `CssBaseline` is loaded, its unlayered `* { box-sizing:
-  inherit }` beats StyleX, so do not rely on `boxSizing: 'content-box'`.
+- MUI's `CssBaseline` is gone: `src/styles/app.css` replicates its reset
+  (border-box sizing, body typography and colors) inside `@layer reset`, so
+  StyleX styles, including `boxSizing`, always win over it.
 
 ### Naming Conventions
 

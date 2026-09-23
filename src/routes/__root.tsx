@@ -5,7 +5,6 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import '@pigment-css/react/styles.css'
 import '@/styles/app.css'
 
-import { CssBaseline } from '@mui/material'
 import { Header } from '@/components/Header'
 
 // Dev only: keeps /virtual:stylex.css in sync as modules (re)compile,
@@ -56,7 +55,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Header />
-        <CssBaseline />
         {children}
         <TanStackDevtools
           config={{

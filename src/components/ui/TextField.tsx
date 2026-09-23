@@ -118,8 +118,8 @@ const styles = stylex.create({
     padding: '16.5px 14px',
     borderWidth: 0,
     // MUI uses content-box with a 1.4375em height. border-box plus the
-    // padding is the same box, and does not depend on the global reset
-    // (MUI CssBaseline's unlayered `* { box-sizing: inherit }` beats StyleX).
+    // padding is the same box, and does not depend on the global
+    // `* { box-sizing: inherit }` reset in app.css.
     boxSizing: 'border-box',
     background: 'none',
     height: 'calc(1.4375em + 33px)',
