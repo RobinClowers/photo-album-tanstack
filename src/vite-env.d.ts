@@ -7,3 +7,6 @@ interface ImportMetaEnv {
    */
   readonly VITE_PHOTO_BASE_URL?: string
 }
+
+/** @stylexjs/unplugin dev runtime: refetches /virtual:stylex.css on HMR. */
+declare module 'virtual:stylex:runtime' {}

@@ -1,0 +1,15 @@
+/*
+ * Global base styles, side-effect imported from __root.tsx (never via `?url`:
+ * @stylexjs/unplugin appends the compiled StyleX rules to this CSS asset in
+ * builds, and a `?url` link gets a different hash per Vite environment).
+ *
+ * Everything here lives in the `reset` layer, which StyleX declares ahead of
+ * its own layers (see vite.config.ts), so any StyleX style beats these rules.
+ * Unlayered rules here would beat every StyleX class; do not add any.
+ */
+@layer reset {
+  body {
+    margin: 0;
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  }
+}
