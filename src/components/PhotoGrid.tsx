@@ -1,4 +1,5 @@
-import { Box } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
+import { breakpoints } from '@/styles/breakpoints.stylex'
 import type { GridPhoto } from '@/utils/publicPhoto'
 import PhotoGridItem from './PhotoGridItem'
 
@@ -12,6 +13,23 @@ interface PhotoGridProps {
   albumSlug: string
 }
 
+const styles = stylex.create({
+  grid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: '10px',
+    paddingLeft: { default: 0, [breakpoints.smUp]: '10px' },
+    paddingRight: { default: 0, [breakpoints.smUp]: '10px' },
+    // Absorbs the free space in the last row so its tiles stay near the
+    // target height instead of stretching to fill the full width.
+    '::after': {
+      content: '""',
+      flexGrow: 1e4,
+    },
+  },
+})
+
 /**
  * Justified rows in pure CSS: each tile's flex-basis is its width at the
  * target row height, and its flex-grow is its aspect ratio, so leftover space
@@ -21,22 +39,7 @@ interface PhotoGridProps {
  */
 export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
   return (
-    <Box
-      sx={{
-        '--row-height': { xs: '200px', sm: '320px' },
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'flex-start',
-        gap: '10px',
-        px: { xs: 0, sm: '10px' },
-        // Absorbs the free space in the last row so its tiles stay near the
-        // target height instead of stretching to fill the full width.
-        '&::after': {
-          content: '""',
-          flexGrow: 1e4,
-        },
-      }}
-    >
+    <div {...stylex.props(styles.grid)}>
       {photos.map((photo, index) => (
         <PhotoGridItem
           key={photo.id}
@@ -45,6 +48,6 @@ export default function PhotoGrid({ photos, albumSlug }: PhotoGridProps) {
           priority={index < PRIORITY_COUNT}
         />
       ))}
-    </Box>
+    </div>
   )
 }

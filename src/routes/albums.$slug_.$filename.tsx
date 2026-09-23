@@ -1,9 +1,15 @@
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
-import { Box, Container, IconButton, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getPhotoDetailsFn } from '@/api/albums'
+import {
+  ArrowBackIcon,
+  ArrowBackIosNewIcon,
+  ArrowForwardIosIcon,
+  Container,
+  IconButton,
+  Text,
+} from '@/components/ui'
+import { radii, space } from '@/styles/tokens.stylex'
 import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/albums/$slug_/$filename')({
@@ -53,94 +59,117 @@ export const Route = createFileRoute('/albums/$slug_/$filename')({
   },
 })
 
+const styles = stylex.create({
+  page: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  container: { paddingTop: space.s2, paddingBottom: space.s2 },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: space.s2,
+  },
+  back: { marginRight: space.s2 },
+  stage: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    // Rough calculation to keep the photo within the viewport.
+    height: 'calc(100vh - 150px)',
+    position: 'relative',
+  },
+  nav: { zIndex: 1 },
+  navPlaceholder: { width: '51px' },
+  photo: {
+    maxWidth: 'calc(100% - 120px)',
+    maxHeight: '100%',
+    objectFit: 'contain',
+    borderRadius: radii.sm,
+  },
+  caption: {
+    marginTop: space.s3,
+    paddingLeft: space.s2,
+    paddingRight: space.s2,
+  },
+})
+
 function PhotoPage() {
   const { photo, previousPhotoFilename, nextPhotoFilename } =
     Route.useLoaderData()
   const { slug } = Route.useParams()
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Container maxWidth="xl" sx={{ py: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Link
-            to="/albums/$slug"
-            params={{ slug }}
-            style={{ display: 'block' }}
+    <div {...stylex.props(styles.page)}>
+      <Container maxWidth="xl" xstyle={styles.container}>
+        <div {...stylex.props(styles.header)}>
+          <IconButton
+            render={<Link to="/albums/$slug" params={{ slug }} />}
+            aria-label="Back to album"
+            xstyle={styles.back}
           >
-            <IconButton sx={{ mr: 2 }} aria-label="Back to album">
-              <ArrowBackIcon />
-            </IconButton>
-          </Link>
-          <Typography variant="h6" component="h1">
+            <ArrowBackIcon />
+          </IconButton>
+          <Text variant="h6" as="h1">
             Back to {photo.albumTitle || 'Album'}
-          </Typography>
-        </Box>
+          </Text>
+        </div>
 
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            width: '100%',
-            height: 'calc(100vh - 150px)', // Rough calculation to keep it within view
-            position: 'relative',
-          }}
-        >
+        <div {...stylex.props(styles.stage)}>
           {previousPhotoFilename ? (
-            <Link
-              to="/albums/$slug/$filename"
-              params={{ slug, filename: previousPhotoFilename }}
-              style={{ display: 'flex', zIndex: 1 }}
+            <IconButton
+              render={
+                <Link
+                  to="/albums/$slug/$filename"
+                  params={{ slug, filename: previousPhotoFilename }}
+                />
+              }
+              size="large"
+              aria-label="Previous photo"
+              xstyle={styles.nav}
             >
-              <IconButton size="large" aria-label="Previous photo">
-                <ArrowBackIosNewIcon fontSize="large" />
-              </IconButton>
-            </Link>
+              <ArrowBackIosNewIcon fontSize="large" />
+            </IconButton>
           ) : (
-            <Box sx={{ width: 51 }} /> // Placeholder to keep image centered
+            // Placeholder to keep the image centered.
+            <div {...stylex.props(styles.navPlaceholder)} />
           )}
 
-          <Box
-            component="img"
+          <img
             src={photo.src}
             alt={photo.caption || ''}
-            sx={{
-              maxWidth: 'calc(100% - 120px)',
-              maxHeight: '100%',
-              objectFit: 'contain',
-              borderRadius: 1,
-            }}
+            {...stylex.props(styles.photo)}
           />
 
           {nextPhotoFilename ? (
-            <Link
-              to="/albums/$slug/$filename"
-              params={{ slug, filename: nextPhotoFilename }}
-              style={{ display: 'flex', zIndex: 1 }}
+            <IconButton
+              render={
+                <Link
+                  to="/albums/$slug/$filename"
+                  params={{ slug, filename: nextPhotoFilename }}
+                />
+              }
+              size="large"
+              aria-label="Next photo"
+              xstyle={styles.nav}
             >
-              <IconButton size="large" aria-label="Next photo">
-                <ArrowForwardIosIcon fontSize="large" />
-              </IconButton>
-            </Link>
+              <ArrowForwardIosIcon fontSize="large" />
+            </IconButton>
           ) : (
-            <Box sx={{ width: 51 }} /> // Placeholder to keep image centered
+            <div {...stylex.props(styles.navPlaceholder)} />
           )}
-        </Box>
+        </div>
 
         {photo.caption && (
-          <Box sx={{ mt: 3, px: 2 }}>
-            <Typography variant="body1" align="center">
+          <div {...stylex.props(styles.caption)}>
+            <Text variant="body1" align="center">
               {photo.caption}
-            </Typography>
-          </Box>
+            </Text>
+          </div>
         )}
       </Container>
-    </Box>
+    </div>
   )
 }

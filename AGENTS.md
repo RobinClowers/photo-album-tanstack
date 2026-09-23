@@ -211,6 +211,11 @@ export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
   `borderColor`, `borderTopWidth`, ... The Biome plugin
   `biome-plugins/no-stylex-border-shorthand.grit` enforces this in
   `bun run check`. Multi-value `padding` / `margin` / `borderRadius` are fine.
+- Do not give a var override in `stylex.create` conditional values
+  (`[vars.x]: { default: ..., [breakpoints.smUp]: ... }`): with CSS layers
+  StyleX emits the default unlayered and the `@media` value inside a layer,
+  so the default always wins in builds (jsdom tests cannot see this). Put the
+  condition in `defineVars` instead (see `src/components/photoGrid.stylex.ts`).
 - Never put StyleX styles on MUI components: StyleX output lives in CSS
   `@layer`s and unlayered MUI/Pigment CSS beats it. Convert whole components.
 - Global base styles go in `src/styles/app.css` inside `@layer reset` (StyleX
@@ -368,6 +373,13 @@ from the module's own exports, or the test proves nothing. Module-level
 constants derived from `import.meta.env` are captured at import time: to cover
 a different value, use `vi.stubEnv(...)` plus `vi.resetModules()` and a dynamic
 `await import('./module')` (see `src/utils/photo.test.ts`).
+
+Route pages are tested beside their route file (`src/routes/login.test.tsx`;
+`vite.config.ts` sets `routeFileIgnorePattern` so the router generator skips
+`*.test.tsx`). `renderRoute(Route, { id, path, url, loaderData })` from
+`src/test/renderRoute.tsx` mounts the page with a stub loader, using the same
+`id` / `path` as `routeTree.gen.ts`; `vi.mock` the route's `@/api/*` imports,
+since server functions cannot load under Vitest.
 
 ```typescript
 import { render, screen } from '@testing-library/react'

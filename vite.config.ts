@@ -35,7 +35,11 @@ const config = defineConfig({
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    tanstackStart(),
+    tanstackStart({
+      // Route tests sit beside the routes (src/routes/login.test.tsx); they
+      // are not routes.
+      router: { routeFileIgnorePattern: '\\.test\\.tsx?$' },
+    }),
     viteReact(),
   ],
 })
