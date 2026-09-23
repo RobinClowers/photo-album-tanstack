@@ -59,6 +59,29 @@ describe('buildPhotoPath', () => {
     )
   })
 
+  it('falls back to the original under its own folder when a variant is missing', () => {
+    // Shape of new-york-city/P1000566.JPG: a 1024x768 original too small for
+    // any variant above mobile_sm.
+    const p = photo([
+      version({ size: 'mobile_sm', height: 480, filename: 'P1000566.jpg' }),
+      version({ size: 'original', height: 768, filename: 'P1000566.JPG' }),
+    ])
+    expect(buildPhotoPath(p, 'desktop')).toBe(
+      'https://img.robinclowers.com/bangkok/original/P1000566.JPG',
+    )
+  })
+
+  it('falls back to the smallest version at least as tall as the request', () => {
+    const p = photo([
+      version({ size: 'original', height: 4000, filename: 'o.jpg' }),
+      version({ size: 'mobile_sm', height: 480, filename: 's.jpg' }),
+      version({ size: 'laptop', height: 1535, filename: 'l.jpg' }),
+    ])
+    expect(buildPhotoPath(p, 'tablet')).toBe(
+      'https://img.robinclowers.com/bangkok/laptop/l.jpg',
+    )
+  })
+
   it('returns an empty string when the photo has no versions', () => {
     expect(buildPhotoPath(photo([]), 'tablet')).toBe('')
     expect(buildPhotoPath(null, 'tablet')).toBe('')

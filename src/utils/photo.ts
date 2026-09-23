@@ -1,4 +1,5 @@
 import type { Photo, PhotoVersion } from '@/db/schema'
+import { PHOTO_SIZES } from '@/server/images/sizes'
 
 /**
  * Public base URL for photo objects: the R2 bucket's custom domain.
@@ -41,16 +42,38 @@ export function photoObjectKeys(
   return [...keys]
 }
 
+type SizedVersion = PhotoVersion & { size: string; filename: string }
+
+/**
+ * The version to show for a requested size. A variant is only missing when
+ * the original was too small to produce it, so the fallback is the smallest
+ * version at least as tall as the requested size, else the tallest one
+ * (normally the original itself).
+ */
+function versionForSize(
+  versions: readonly PhotoVersion[],
+  size: string,
+): SizedVersion | undefined {
+  const usable = versions.filter(
+    (v): v is SizedVersion => Boolean(v.size) && Boolean(v.filename),
+  )
+  const exact = usable.find((v) => v.size === size)
+  if (exact) return exact
+  const byHeight = [...usable].sort((a, b) => (a.height ?? 0) - (b.height ?? 0))
+  const target = PHOTO_SIZES.find((s) => s.name === size)?.height ?? Infinity
+  return byHeight.find((v) => (v.height ?? 0) >= target) ?? byHeight.at(-1)
+}
+
 export function buildPhotoPath(
   photo: PhotoWithVersions | null | undefined,
   size: string,
 ) {
-  if (!photo?.versions?.length) return ''
-  const version =
-    photo.versions.find((v) => v.size === size) || photo.versions[0]
+  if (!photo?.versions?.length || !photo.path) return ''
+  const version = versionForSize(photo.versions, size)
   if (!version) return ''
-  if (!photo.path || !version.filename) return ''
-  return `${BASE_PHOTO_PATH}${photoObjectKey(photo.path, size, version.filename)}`
+  // Key by the chosen version's own size: a fallback lives under its size's
+  // folder, not the requested one.
+  return `${BASE_PHOTO_PATH}${photoObjectKey(photo.path, version.size, version.filename)}`
 }
 
 export function buildPhotoSrcSet(photo: PhotoWithVersions | null | undefined) {
