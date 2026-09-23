@@ -21,11 +21,21 @@ describe('/privacy', () => {
       'Sharing',
       'Contact',
     ])
-    const visitors = screen.getByRole('heading', { name: 'Visitors' })
-    expect(styleOf(visitors, 'margin-top')).toBe('24px')
+  })
+
+  // Main's `sx` margins and `color="text.secondary"` on Typography never
+  // applied under Pigment; the page keeps that live look.
+  it('matches the live spacing and colour of the MUI build', async () => {
+    renderRoute(Route, { id: '/privacy', path: '/privacy', url: '/privacy' })
+    const visitors = await screen.findByRole('heading', { name: 'Visitors' })
+    expect(styleOf(visitors, 'margin-top')).toBe('0px')
     expect(getComputedStyle(visitors).marginBottom).toBe('0.35em')
+    const intro = screen.getByText(/^Robinʼs Photos is a personal/)
+    expect(styleOf(intro, 'margin-top')).toBe('0px')
+    expect(styleOf(intro, 'margin-bottom')).toBe('16px')
     const updated = screen.getByText(/^Last updated/)
-    expect(styleOf(updated, 'color')).toBe('rgba(0, 0, 0, 0.6)')
+    // Inherits the body text colour rather than MUI text.secondary.
+    expect(styleOf(updated, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
   })
 
   it('links to the Google policy and the contact address', async () => {

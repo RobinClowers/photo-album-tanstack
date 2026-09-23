@@ -71,7 +71,6 @@ const styles = stylex.create({
     alignItems: 'center',
     marginBottom: space.s2,
   },
-  back: { marginRight: space.s2 },
   stage: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -108,7 +107,6 @@ function PhotoPage() {
           <IconButton
             render={<Link to="/albums/$slug" params={{ slug }} />}
             aria-label="Back to album"
-            xstyle={styles.back}
           >
             <ArrowBackIcon />
           </IconButton>

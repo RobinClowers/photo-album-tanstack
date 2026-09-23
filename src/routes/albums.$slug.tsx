@@ -30,7 +30,6 @@ export const Route = createFileRoute('/albums/$slug')({
 
 const styles = stylex.create({
   page: { paddingTop: space.s4, paddingBottom: space.s4 },
-  title: { marginBottom: space.s4 },
 })
 
 function AlbumPage() {
@@ -38,7 +37,7 @@ function AlbumPage() {
 
   return (
     <Container maxWidth="xl" xstyle={styles.page}>
-      <Text variant="h3" as="h1" align="center" xstyle={styles.title}>
+      <Text variant="h3" as="h1" align="center" gutterBottom>
         {album.title}
       </Text>
 

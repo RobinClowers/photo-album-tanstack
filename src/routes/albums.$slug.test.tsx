@@ -34,7 +34,8 @@ describe('/albums/$slug', () => {
     expect(title.textContent).toBe('Iceland')
     expect(styleOf(title, 'font-size')).toBe('3rem')
     expect(getComputedStyle(title).textAlign).toBe('center')
-    expect(styleOf(title, 'margin-bottom')).toBe('32px')
+    // MUI gutterBottom; main's `sx={{ mb: 4 }}` never applied under Pigment.
+    expect(styleOf(title, 'margin-bottom')).toBe('0.35em')
     expect(
       screen.getByRole('link', { name: /Waterfall/ }).getAttribute('href'),
     ).toBe('/albums/iceland/falls.jpg')
