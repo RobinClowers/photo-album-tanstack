@@ -212,10 +212,10 @@ days of history: `bun run wrangler d1 time-travel restore photo-album
 name for staging) rolls the whole database back, and prints the bookmark to
 undo the restore itself.
 
-The production and staging databases were seeded from SQL dumps rather than by
-running migration `0000`, so wrangler has no record of it. Before the first
+When a database is seeded from a SQL dump rather than by running migration
+`0000`, Wrangler initially has no record of it. Before the first
 `migrations apply` against such a database, record the baseline once so
-wrangler does not try to re-create the tables:
+Wrangler does not try to re-create the tables:
 
 ```sql
 CREATE TABLE IF NOT EXISTS d1_migrations(
@@ -226,10 +226,11 @@ CREATE TABLE IF NOT EXISTS d1_migrations(
 INSERT OR IGNORE INTO d1_migrations(name) VALUES ('0000_careful_paladin.sql');
 ```
 
-Run it with `bun run db <env> --write "..."`. The remote staging database has
-this row; production still needs it. Local
-databases live in `.wrangler/state` and are per-machine, so each clone that
-seeds from a dump rather than `db:local` has to record the baseline itself.
+Run it with `bun run db <env> --write "..."`. Both staging and production have
+since run migrations. This baseline step is only needed for a newly seeded
+database without migration history. Local databases live in `.wrangler/state`
+and are per-machine, so each clone that seeds from a dump rather than
+`db:local` has to record the baseline itself.
 
 ### Refreshing staging from production
 
@@ -308,3 +309,33 @@ Two consequences:
 
 `bun run cf-typegen` regenerates `worker-configuration.d.ts` after changing
 bindings, vars, or `secrets.required` in `wrangler.jsonc`.
+
+### GitHub Actions
+
+[CI and deploy](.github/workflows/ci.yml) uses standard Linux runners:
+
+- Pull requests run tests and TypeScript checks without deployment credentials.
+- Pushes to `main` run those checks, build staging, apply pending staging D1
+  migrations, and deploy the staging Worker.
+- After staging succeeds, the same run automatically builds and deploys that
+  commit to production, applying pending production D1 migrations first.
+  A failed check, staging build, migration, or deployment blocks production.
+
+The entire checks → staging → production sequence is serialized across `main`
+pushes, so deployment sequences cannot overlap. A newer push does not cancel
+an active run; GitHub may replace an older pending run with a newer pending
+run. Superseded pull request runs are canceled. Jobs have time limits and do
+not retain build artifacts.
+
+Migrations explicitly read the source `wrangler.jsonc` and select the database
+environment. Deployments read the generated config from the preceding build,
+following [Cloudflare's build-time environment selection](https://developers.cloudflare.com/workers/vite-plugin/reference/cloudflare-environments/).
+Keep migrations backward-compatible with the currently deployed Worker: a
+failed deployment does not undo successful migrations. Review destructive
+schema changes separately before merging.
+
+Production starts as soon as staging deployment succeeds; there is no manual
+approval or application smoke test between deployments.
+
+To retry a deployment failure, re-run the failed job in Actions; D1 skips
+migrations already recorded as applied.
