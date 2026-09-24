@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TextField } from './TextField'
 import { styleOf } from './test-utils'
 
@@ -110,5 +110,71 @@ describe('TextField', () => {
     expect(textarea.tagName).toBe('TEXTAREA')
     expect(textarea.getAttribute('rows')).toBe('2')
     expect(styleOf(textarea, 'resize')).toBe('none')
+  })
+
+  describe('multiline autosize', () => {
+    type Callback = (entries: Array<{ contentRect: { width: number } }>) => void
+    const observers: Array<{ callback: Callback; disconnected: boolean }> = []
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      observers.length = 0
+    })
+
+    function stubResizeObserver() {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          record: { callback: Callback; disconnected: boolean }
+          constructor(callback: Callback) {
+            this.record = { callback, disconnected: false }
+            observers.push(this.record)
+          }
+          observe() {}
+          disconnect() {
+            this.record.disconnected = true
+          }
+        },
+      )
+    }
+
+    function setScrollHeight(el: HTMLElement, px: number) {
+      Object.defineProperty(el, 'scrollHeight', {
+        configurable: true,
+        get: () => px,
+      })
+    }
+
+    it('re-measures when the field width changes', () => {
+      stubResizeObserver()
+      const { unmount } = render(
+        <TextField label="Caption" multiline value="a long caption" />,
+      )
+      const textarea = screen.getByRole('textbox', { name: 'Caption' })
+      expect(observers).toHaveLength(1)
+      const observer = observers[0]
+      if (!observer) throw new Error('no ResizeObserver')
+
+      setScrollHeight(textarea, 46)
+      act(() => observer.callback([{ contentRect: { width: 180 } }]))
+      expect(textarea.style.height).toBe('46px')
+
+      // Same width (e.g. our own height change): no re-measure.
+      setScrollHeight(textarea, 69)
+      act(() => observer.callback([{ contentRect: { width: 180 } }]))
+      expect(textarea.style.height).toBe('46px')
+
+      act(() => observer.callback([{ contentRect: { width: 120 } }]))
+      expect(textarea.style.height).toBe('69px')
+
+      unmount()
+      expect(observer.disconnected).toBe(true)
+    })
+
+    it('does not observe single-line inputs', () => {
+      stubResizeObserver()
+      render(<TextField label="Title" />)
+      expect(observers).toHaveLength(0)
+    })
   })
 })

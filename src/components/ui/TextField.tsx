@@ -253,6 +253,32 @@ export function TextField({
     if (multiline) resize()
   }, [multiline, resize, value])
 
+  // Re-measure when the field's width changes (wrapping changes the line
+  // count) and when web fonts finish loading, as MUI's TextareaAutosize did.
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!multiline || !el) return
+    let lastWidth = el.getBoundingClientRect().width
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver((entries) => {
+            const width = entries[entries.length - 1]?.contentRect.width
+            // resize() changes the height, which also notifies; only a width
+            // change can change the wrapping.
+            if (width === undefined || width === lastWidth) return
+            lastWidth = width
+            resize()
+          })
+    observer?.observe(el)
+    const fonts = typeof document === 'undefined' ? undefined : document.fonts
+    fonts?.addEventListener?.('loadingdone', resize)
+    return () => {
+      observer?.disconnect()
+      fonts?.removeEventListener?.('loadingdone', resize)
+    }
+  }, [multiline, resize])
+
   const labelText = label ? (
     <>
       {label}
