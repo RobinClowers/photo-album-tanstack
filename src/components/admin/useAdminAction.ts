@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 
 /**
  * Runs an admin mutation, refreshes route data afterwards, and surfaces the
- * error message for a Snackbar. One pending flag per hook instance.
+ * error message for an error toast. One pending flag per hook instance.
  */
 export function useAdminAction() {
   const router = useRouter()
@@ -27,7 +27,7 @@ export function useAdminAction() {
         return result
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        // The session expired mid-edit; a Snackbar would just sit there.
+        // The session expired mid-edit; an error toast would just sit there.
         if (message === 'Unauthorized') {
           router.navigate({ to: '/login' })
         } else {

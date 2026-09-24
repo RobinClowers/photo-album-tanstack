@@ -1,21 +1,9 @@
-import { ArrowBack } from '@mui/icons-material'
+import * as stylex from '@stylexjs/stylex'
 import {
-  Alert,
-  Box,
-  Button,
-  Container,
-  Paper,
-  Snackbar,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material'
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+  createFileRoute,
+  notFound,
+  Link as RouterLink,
+} from '@tanstack/react-router'
 import { adminGetImport, adminRetryImport } from '@/api/admin-imports'
 import {
   formatTimestamp,
@@ -25,6 +13,25 @@ import {
 } from '@/components/admin/ImportStatus'
 import { useAdminAction } from '@/components/admin/useAdminAction'
 import { usePollWhile } from '@/components/admin/usePollWhile'
+import {
+  Alert,
+  ArrowBackIcon,
+  Button,
+  Container,
+  Link,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Text,
+  Toast,
+} from '@/components/ui'
+import { breakpoints } from '@/styles/breakpoints.stylex'
+import { space } from '@/styles/tokens.stylex'
 import { parseRecordId } from '@/utils/id'
 
 export const Route = createFileRoute('/admin/imports/$id')({
@@ -35,11 +42,27 @@ export const Route = createFileRoute('/admin/imports/$id')({
     return { record }
   },
   notFoundComponent: () => (
-    <Container sx={{ py: 4 }}>
-      <Typography>Import not found.</Typography>
+    <Container xstyle={styles.notFound}>
+      <Text>Import not found.</Text>
     </Container>
   ),
   component: ImportPage,
+})
+
+/*
+ * On the MUI + Pigment build the `sx` on this route's Paper (padding), Alert
+ * (top margin) and table cells (red monospace errors, nowrap dates), and
+ * `color="text.secondary"` on the start time, never applied. This keeps the
+ * live look: an unpadded summary box and plain cells.
+ */
+const styles = stylex.create({
+  notFound: { paddingTop: space.s4, paddingBottom: space.s4 },
+  page: { paddingTop: space.s3, paddingBottom: space.s3 },
+  toolbar: { display: 'flex', alignItems: 'center', gap: space.s2 },
+  grow: { flexGrow: 1 },
+  summary: {
+    alignItems: { default: null, [breakpoints.smUp]: 'center' },
+  },
 })
 
 function ImportPage() {
@@ -48,18 +71,17 @@ function ImportPage() {
   usePollWhile(record.status === 'running')
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
-      <Stack spacing={3}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Container maxWidth="lg" xstyle={styles.page}>
+      <Stack gap={3}>
+        <div {...stylex.props(styles.toolbar)}>
           <Button
-            component={Link}
-            to="/admin/imports"
-            startIcon={<ArrowBack />}
+            render={<RouterLink to="/admin/imports" />}
+            startIcon={<ArrowBackIcon />}
             size="small"
           >
             All imports
           </Button>
-          <Box sx={{ flexGrow: 1 }} />
+          <div {...stylex.props(styles.grow)} />
           {record.counts.failed > 0 && (
             <Button
               variant="contained"
@@ -72,16 +94,16 @@ function ImportPage() {
               Retry {record.counts.failed} failed
             </Button>
           )}
-        </Box>
+        </div>
 
-        <Paper variant="outlined" sx={{ p: 2 }}>
+        <Paper variant="outlined">
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
-            spacing={3}
-            alignItems={{ sm: 'center' }}
+            gap={3}
+            xstyle={styles.summary}
           >
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" component="h1">
+            <div {...stylex.props(styles.grow)}>
+              <Text variant="h6" as="h1">
                 {IMPORT_KIND_LABEL[record.kind] ?? record.kind}
                 {record.album && (
                   <>
@@ -89,30 +111,26 @@ function ImportPage() {
                     <Link
                       to="/admin/albums/$id"
                       params={{ id: String(record.album.id) }}
-                      style={{ color: 'inherit' }}
+                      color="inherit"
                     >
                       {record.album.title || record.album.slug}
                     </Link>
                   </>
                 )}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+              </Text>
+              <Text variant="body2">
                 Started {formatTimestamp(record.createdAt)}
                 {record.finishedAt &&
                   `, finished ${formatTimestamp(record.finishedAt)}`}
-              </Typography>
-            </Box>
+              </Text>
+            </div>
             <StatusChip status={record.status} />
             <ImportProgress counts={record.counts} />
           </Stack>
-          {record.error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {record.error}
-            </Alert>
-          )}
+          {record.error && <Alert severity="error">{record.error}</Alert>}
         </Paper>
 
-        <TableContainer component={Paper}>
+        <TableContainer paper="elevation">
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -131,20 +149,8 @@ function ImportPage() {
                     <StatusChip status={item.status} />
                   </TableCell>
                   <TableCell align="right">{item.attempts}</TableCell>
-                  <TableCell
-                    sx={{
-                      color: 'error.main',
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      maxWidth: 480,
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {item.lastError}
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                    {formatTimestamp(item.updatedAt)}
-                  </TableCell>
+                  <TableCell>{item.lastError}</TableCell>
+                  <TableCell>{formatTimestamp(item.updatedAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -152,11 +158,9 @@ function ImportPage() {
         </TableContainer>
       </Stack>
 
-      <Snackbar open={Boolean(error)} onClose={clearError}>
-        <Alert severity="error" onClose={clearError}>
-          {error}
-        </Alert>
-      </Snackbar>
+      <Toast open={Boolean(error)} severity="error" onClose={clearError}>
+        {error}
+      </Toast>
     </Container>
   )
 }

@@ -252,9 +252,13 @@ like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
   styled ui `Link`, whose classes would clash) or `href="..."`.
 - Palette colors go through the `tone` vars (`tone.stylex.ts` / `tone.ts`):
   apply `toneStyles[color]` first, then read `tone.main`, `tone.hover`, ...
-- Toasts need a `ToastProvider` above them. `<Toast open={Boolean(error)}
-  severity="error" onClose={clearError}>` replaces the Snackbar + Alert
-  pattern; `useToast().show({ message })` is the imperative form.
+- Toasts need a `ToastProvider` above them; the admin layout
+  (`src/routes/admin.tsx`) mounts one for every `/admin` page.
+  `<Toast open={Boolean(error)} severity="error" onClose={clearError}>`
+  replaces the Snackbar + Alert pattern; `useToast().show({ message })` is the
+  imperative form. Unlike MUI's Snackbar it is not dismissed by clicking
+  elsewhere: it stays until its close button, its `timeout`, or `open`
+  turning false.
 - MUI's `CssBaseline` is gone: `src/styles/app.css` replicates its reset
   (border-box sizing, body typography and colors) inside `@layer reset`, so
   StyleX styles, including `boxSizing`, always win over it.
@@ -378,8 +382,12 @@ Route pages are tested beside their route file (`src/routes/login.test.tsx`;
 `vite.config.ts` sets `routeFileIgnorePattern` so the router generator skips
 `*.test.tsx`). `renderRoute(Route, { id, path, url, loaderData })` from
 `src/test/renderRoute.tsx` mounts the page with a stub loader, using the same
-`id` / `path` as `routeTree.gen.ts`; `vi.mock` the route's `@/api/*` imports,
-since server functions cannot load under Vitest.
+`id` / `path` as `routeTree.gen.ts` (for nested routes, the full path, e.g.
+`/admin/imports/$id`); `vi.mock` the route's `@/api/*` imports, since server
+functions cannot load under Vitest. Pass `wrapper: ToastProvider` for pages
+that show toasts and `context` to stand in for a `beforeLoad` result (e.g.
+the admin layout's `{ user }`). `src/test/adminFixtures.ts` builds minimal
+admin loader rows.
 
 ```typescript
 import { render, screen } from '@testing-library/react'

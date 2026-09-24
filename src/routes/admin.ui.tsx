@@ -53,7 +53,6 @@ import {
   TextField,
   type TextVariant,
   Toast,
-  ToastProvider,
   type ToneColor,
   Tooltip,
   useToast,
@@ -147,35 +146,33 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function KitchenSink() {
   return (
-    <ToastProvider>
-      <Container maxWidth="lg" xstyle={styles.page}>
-        <Stack gap={4}>
-          <div>
-            <Text variant="h4" as="h1" gutterBottom>
-              UI primitives
-            </Text>
-            <Text color="textSecondary">
-              StyleX + Base UI replacements for the MUI components, in every
-              variant. Compare against MUI's defaults.
-            </Text>
-          </div>
-          <TypographySection />
-          <ButtonSection />
-          <IconButtonSection />
-          <IconSection />
-          <ChipSection />
-          <AlertSection />
-          <SurfaceSection />
-          <LayoutSection />
-          <TextFieldSection />
-          <TableSection />
-          <ProgressSection />
-          <AvatarLinkSection />
-          <OverlaySection />
-          <ToastSection />
-        </Stack>
-      </Container>
-    </ToastProvider>
+    <Container maxWidth="lg" xstyle={styles.page}>
+      <Stack gap={4}>
+        <div>
+          <Text variant="h4" as="h1" gutterBottom>
+            UI primitives
+          </Text>
+          <Text color="textSecondary">
+            StyleX + Base UI replacements for the MUI components, in every
+            variant. Compare against MUI's defaults.
+          </Text>
+        </div>
+        <TypographySection />
+        <ButtonSection />
+        <IconButtonSection />
+        <IconSection />
+        <ChipSection />
+        <AlertSection />
+        <SurfaceSection />
+        <LayoutSection />
+        <TextFieldSection />
+        <TableSection />
+        <ProgressSection />
+        <AvatarLinkSection />
+        <OverlaySection />
+        <ToastSection />
+      </Stack>
+    </Container>
   )
 }
 

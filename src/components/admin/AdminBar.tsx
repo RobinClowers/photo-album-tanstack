@@ -1,43 +1,62 @@
-import { Box, Button, Container, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { Link } from '@tanstack/react-router'
+import { Button, Container, Text } from '@/components/ui'
 import type { AdminUser } from '@/server/auth'
+import { colors, font, space } from '@/styles/tokens.stylex'
 
+const styles = stylex.create({
+  bar: {
+    backgroundColor: colors.grey100,
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: colors.divider,
+  },
+  inner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: space.s2,
+    paddingTop: space.s1,
+    paddingBottom: space.s1,
+  },
+  brand: {
+    fontWeight: font.weightMedium,
+    color: 'inherit',
+    textDecoration: 'none',
+  },
+  spacer: { flexGrow: 1 },
+})
+
+// The email is not grey: on the MUI + Pigment build `color="text.secondary"`
+// on Typography never applied, and this keeps the live look.
 export function AdminBar({ user }: { user: AdminUser }) {
   return (
-    <Box sx={{ bgcolor: 'grey.100', borderBottom: 1, borderColor: 'divider' }}>
-      <Container
-        maxWidth="lg"
-        sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}
-      >
-        <Typography
-          component={Link}
-          to="/admin"
+    <div {...stylex.props(styles.bar)}>
+      <Container maxWidth="lg" xstyle={styles.inner}>
+        <Text
           variant="subtitle1"
-          sx={{ fontWeight: 500, color: 'inherit', textDecoration: 'none' }}
+          render={<Link to="/admin" />}
+          xstyle={styles.brand}
         >
           Admin
-        </Typography>
-        <Button component={Link} to="/admin" size="small" color="inherit">
+        </Text>
+        <Button render={<Link to="/admin" />} size="small" color="inherit">
           Albums
         </Button>
         <Button
-          component={Link}
-          to="/admin/imports"
+          render={<Link to="/admin/imports" />}
           size="small"
           color="inherit"
         >
           Imports
         </Button>
-        <Box sx={{ flexGrow: 1 }} />
-        <Typography variant="body2" color="text.secondary">
-          {user.email}
-        </Typography>
+        <div {...stylex.props(styles.spacer)} />
+        <Text variant="body2">{user.email}</Text>
         <form method="post" action="/api/auth/logout">
           <Button type="submit" size="small" variant="outlined">
             Sign out
           </Button>
         </form>
       </Container>
-    </Box>
+    </div>
   )
 }

@@ -1,19 +1,53 @@
-import { Delete, Refresh, Star, StarBorder } from '@mui/icons-material'
+import * as stylex from '@stylexjs/stylex'
+import { useState } from 'react'
 import {
-  Box,
   Card,
   CardActions,
   CardContent,
   CardMedia,
+  DeleteIcon,
   IconButton,
+  RefreshIcon,
+  StarBorderIcon,
+  StarIcon,
   TextField,
   Tooltip,
-} from '@mui/material'
-import { useState } from 'react'
+} from '@/components/ui'
 import type { AdminAlbumDetails } from '@/db/admin'
+import { colors, space } from '@/styles/tokens.stylex'
 import { buildPhotoPath, CAPTION_MAX_LENGTH } from '@/utils/photo'
 
 export type AdminPhoto = AdminAlbumDetails['photos'][number]
+
+const styles = stylex.create({
+  card: { display: 'flex', flexDirection: 'column' },
+  media: {
+    aspectRatio: '4 / 3',
+    objectFit: 'cover',
+    backgroundColor: colors.grey100,
+  },
+  content: { padding: space.s1_5, paddingBottom: 0, flexGrow: 1 },
+  filename: {
+    fontSize: '12px',
+    color: colors.textSecondary,
+    marginBottom: space.s1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  // MUI sizes the input root, so its em-based line height and letter
+  // spacing scale with the 13px text too.
+  caption: {
+    fontSize: '13px',
+    lineHeight: '1.4375em',
+    letterSpacing: '0.00938em',
+  },
+  actions: {
+    justifyContent: 'space-between',
+    paddingLeft: space.s1,
+    paddingRight: space.s1,
+  },
+})
 
 export function PhotoTile({
   photo,
@@ -56,59 +90,49 @@ export function PhotoTile({
     }
   }
 
+  const coverLabel = isCover ? 'Cover photo' : 'Use as cover'
+
   return (
-    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+    <Card variant="outlined" xstyle={styles.card}>
       <CardMedia
-        component="img"
-        image={buildPhotoPath(photo, 'mobile_sm')}
+        src={buildPhotoPath(photo, 'mobile_sm')}
         alt={photo.filename ?? ''}
         loading="lazy"
-        sx={{ aspectRatio: '4 / 3', objectFit: 'cover', bgcolor: 'grey.100' }}
+        xstyle={styles.media}
       />
-      <CardContent sx={{ p: 1.5, pb: 0, flexGrow: 1 }}>
-        <Box
-          sx={{
-            fontSize: 12,
-            color: 'text.secondary',
-            mb: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          title={photo.filename ?? ''}
-        >
+      <CardContent xstyle={styles.content}>
+        <div title={photo.filename ?? ''} {...stylex.props(styles.filename)}>
           {photo.filename}
-        </Box>
+        </div>
         <TextField
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           onBlur={saveCaption}
           placeholder="Caption"
+          aria-label={`Caption for ${photo.filename ?? 'photo'}`}
           size="small"
           multiline
           minRows={1}
           maxRows={4}
           fullWidth
           disabled={disabled || saving}
-          slotProps={{
-            input: { sx: { fontSize: 13 } },
-            htmlInput: { maxLength: CAPTION_MAX_LENGTH },
-          }}
+          maxLength={CAPTION_MAX_LENGTH}
+          inputXstyle={styles.caption}
         />
       </CardContent>
-      <CardActions sx={{ justifyContent: 'space-between', px: 1 }}>
-        <Tooltip title={isCover ? 'Cover photo' : 'Use as cover'}>
+      <CardActions xstyle={styles.actions}>
+        <Tooltip title={coverLabel}>
           <IconButton
             size="small"
             color={isCover ? 'warning' : 'default'}
             onClick={onSetCover}
             disabled={disabled || isCover}
-            aria-label={isCover ? 'Cover photo' : 'Use as cover'}
+            aria-label={coverLabel}
           >
-            {isCover ? <Star /> : <StarBorder />}
+            {isCover ? <StarIcon /> : <StarBorderIcon />}
           </IconButton>
         </Tooltip>
-        <Box>
+        <div>
           <Tooltip title="Regenerate size variants">
             <IconButton
               size="small"
@@ -116,7 +140,7 @@ export function PhotoTile({
               disabled={disabled}
               aria-label="Regenerate size variants"
             >
-              <Refresh fontSize="small" />
+              <RefreshIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete photo">
@@ -126,10 +150,10 @@ export function PhotoTile({
               disabled={disabled}
               aria-label="Delete photo"
             >
-              <Delete fontSize="small" />
+              <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-        </Box>
+        </div>
       </CardActions>
     </Card>
   )

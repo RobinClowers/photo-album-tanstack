@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
+import type { ComponentType, ReactNode } from 'react'
 import { vi } from 'vitest'
 
 export interface RenderRouteOptions {
@@ -17,18 +18,25 @@ export interface RenderRouteOptions {
   url: string
   /** What the loader resolves to; replaces the real (server) loader. */
   loaderData?: unknown
+  /**
+   * Route context to provide in place of the route's `beforeLoad` result,
+   * e.g. `{ user }` for the admin layout.
+   */
+  context?: Record<string, unknown>
+  /** Wraps the router, e.g. a `ToastProvider` the real layout would mount. */
+  wrapper?: ComponentType<{ children: ReactNode }>
 }
 
 /**
  * Renders a file route's page component in a minimal router, the way
  * routeTree.gen.ts mounts it (same id and path, so `Route.useLoaderData()`,
  * `useParams()` and `useSearch()` work), with a stub loader and without the
- * route's `beforeLoad` guard. Mock the route's server-function imports with
+ * route's `beforeLoad` guard (or with one that returns `context`). Mock the route's server-function imports with
  * `vi.mock` first. The router mounts asynchronously: query with `findBy*`.
  */
 export function renderRoute(
   route: AnyRoute,
-  { id, path, url, loaderData }: RenderRouteOptions,
+  { id, path, url, loaderData, context, wrapper }: RenderRouteOptions,
 ) {
   // The router resets scroll on navigation; jsdom logs "Not implemented".
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
@@ -39,12 +47,15 @@ export function renderRoute(
     id,
     path,
     getParentRoute: () => rootRoute,
-    beforeLoad: undefined,
+    beforeLoad: context ? () => context : undefined,
     loader: () => loaderData,
   } as Parameters<AnyRoute['update']>[0])
   const router = createRouter({
     routeTree: rootRoute.addChildren([pageRoute]),
     history: createMemoryHistory({ initialEntries: [url] }),
   })
-  return { router, ...render(<RouterProvider router={router} />) }
+  return {
+    router,
+    ...render(<RouterProvider router={router} />, { wrapper }),
+  }
 }

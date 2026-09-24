@@ -1,35 +1,54 @@
-import { Chip, LinearProgress, Stack, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
+import { Chip, LinearProgress, Stack, Text } from '@/components/ui'
 import type { ImportCounts } from '@/db/imports'
+
+/** Chip color for an import or item status. */
+export function statusColor(status: string) {
+  return status === 'done'
+    ? 'success'
+    : status === 'failed'
+      ? 'error'
+      : status === 'processing' || status === 'picking'
+        ? 'info'
+        : 'default'
+}
 
 /** Color-coded status chip for an import or an item. */
 export function StatusChip({ status }: { status: string }) {
-  const color =
-    status === 'done'
-      ? 'success'
-      : status === 'failed'
-        ? 'error'
-        : status === 'processing' || status === 'picking'
-          ? 'info'
-          : 'default'
-  return <Chip size="small" label={status} color={color} variant="outlined" />
+  return (
+    <Chip
+      size="small"
+      label={status}
+      color={statusColor(status)}
+      variant="outlined"
+    />
+  )
 }
 
-/** "3 / 12 done, 1 failed" with a progress bar. */
+const styles = stylex.create({
+  progress: { minWidth: '160px' },
+})
+
+/**
+ * "3 / 12 done, 1 failed" with a progress bar. The caption is not grey: on
+ * the MUI + Pigment build `color="text.secondary"` never applied.
+ */
 export function ImportProgress({ counts }: { counts: ImportCounts }) {
   const finished = counts.done + counts.failed
   const percent = counts.total ? (finished / counts.total) * 100 : 100
+  const summary = [
+    `${counts.done} / ${counts.total} done`,
+    counts.failed ? `, ${counts.failed} failed` : '',
+    counts.processing ? `, ${counts.processing} running` : '',
+  ].join('')
   return (
-    <Stack spacing={0.5} sx={{ minWidth: 160 }}>
+    <Stack gap={0.5} xstyle={styles.progress}>
       <LinearProgress
-        variant="determinate"
         value={percent}
         color={counts.failed ? 'error' : 'primary'}
+        aria-label={summary}
       />
-      <Typography variant="caption" color="text.secondary">
-        {counts.done} / {counts.total} done
-        {counts.failed ? `, ${counts.failed} failed` : ''}
-        {counts.processing ? `, ${counts.processing} running` : ''}
-      </Typography>
+      <Text variant="caption">{summary}</Text>
     </Stack>
   )
 }

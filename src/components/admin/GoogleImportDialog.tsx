@@ -1,17 +1,4 @@
-import { OpenInNew } from '@mui/icons-material'
-import {
-  Alert,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Link as MuiLink,
-  Stack,
-  Typography,
-} from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { Link, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -21,7 +8,25 @@ import {
   adminStartGooglePick,
   type PollPickResult,
 } from '@/api/admin-google'
+import {
+  Alert,
+  Anchor,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  OpenInNewIcon,
+  Stack,
+  Text,
+} from '@/components/ui'
 import type { PickPlan } from '@/server/pipeline/google-plan'
+
+const styles = stylex.create({
+  start: { alignSelf: 'flex-start' },
+})
 
 type Phase =
   | { kind: 'loading' }
@@ -40,7 +45,7 @@ type Phase =
 const connectUrl = (albumId: number) =>
   `/api/auth/google/photos?returnTo=${encodeURIComponent(`/admin/albums/${albumId}`)}`
 
-/** Same shape as useAdminAction's Snackbar text: no "Error:" prefix. */
+/** Same shape as useAdminAction's error toast: no "Error:" prefix. */
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
@@ -170,10 +175,12 @@ export function GoogleImportDialog({
     <Dialog open={open} onClose={cancel} maxWidth="sm" fullWidth>
       <DialogTitle>Import from Google Photos</DialogTitle>
       <DialogContent>
-        {phase.kind === 'loading' && <CircularProgress size={24} />}
+        {phase.kind === 'loading' && (
+          <CircularProgress size={24} aria-label="Loading" />
+        )}
 
         {phase.kind === 'disconnected' && (
-          <Stack spacing={2}>
+          <Stack gap={2}>
             <DialogContentText>
               Connect your Google account with permission to read the photos you
               pick. Google will ask you to confirm; you are sent back here
@@ -181,9 +188,8 @@ export function GoogleImportDialog({
             </DialogContentText>
             <Button
               variant="contained"
-              component="a"
               href={connectUrl(albumId)}
-              sx={{ alignSelf: 'flex-start' }}
+              xstyle={styles.start}
             >
               Connect Google Photos
             </Button>
@@ -191,7 +197,7 @@ export function GoogleImportDialog({
         )}
 
         {(phase.kind === 'ready' || phase.kind === 'starting') && (
-          <Stack spacing={2}>
+          <Stack gap={2}>
             <DialogContentText>
               Google Photos opens in a new tab where you choose the photos to
               add to this album. Videos and duplicates of photos already in the
@@ -201,8 +207,8 @@ export function GoogleImportDialog({
               variant="contained"
               onClick={start}
               disabled={phase.kind === 'starting'}
-              endIcon={<OpenInNew />}
-              sx={{ alignSelf: 'flex-start' }}
+              endIcon={<OpenInNewIcon />}
+              xstyle={styles.start}
             >
               Choose photos in Google Photos
             </Button>
@@ -210,27 +216,30 @@ export function GoogleImportDialog({
         )}
 
         {phase.kind === 'picking' && (
-          <Stack spacing={2} direction="row" alignItems="center">
-            <CircularProgress size={20} />
-            <Typography>
+          <Stack gap={2} direction="row" align="center">
+            <CircularProgress
+              size={20}
+              aria-label="Waiting for Google Photos"
+            />
+            <Text>
               Waiting for you to finish picking in the Google Photos tab.{' '}
-              <MuiLink href={phase.pickerUri} target="_blank" rel="noreferrer">
+              <Anchor href={phase.pickerUri} target="_blank" rel="noreferrer">
                 Open it again
-              </MuiLink>{' '}
+              </Anchor>{' '}
               if it did not appear.
-            </Typography>
+            </Text>
           </Stack>
         )}
 
         {phase.kind === 'finished' && (
-          <Stack spacing={1}>
+          <Stack gap={1}>
             <Alert severity={phase.result.queued ? 'success' : 'info'}>
               {phase.result.queued
                 ? `${phase.result.queued} photo${phase.result.queued === 1 ? '' : 's'} queued for import.`
                 : 'Nothing new to import.'}
             </Alert>
             <SkippedSummary skipped={phase.result.skipped} />
-            <Typography variant="body2">
+            <Text variant="body2">
               Progress is on the{' '}
               <Link
                 to="/admin/imports/$id"
@@ -239,7 +248,7 @@ export function GoogleImportDialog({
                 import page
               </Link>
               .
-            </Typography>
+            </Text>
           </Stack>
         )}
 
@@ -259,6 +268,7 @@ export function GoogleImportDialog({
   )
 }
 
+// Not grey: on the MUI + Pigment build `color="text.secondary"` never applied.
 function SkippedSummary({ skipped }: { skipped: PickPlan['skipped'] }) {
   const parts = [
     skipped.existingById
@@ -273,9 +283,5 @@ function SkippedSummary({ skipped }: { skipped: PickPlan['skipped'] }) {
       : null,
   ].filter((p): p is string => p !== null)
   if (parts.length === 0) return null
-  return (
-    <Typography variant="body2" color="text.secondary">
-      Skipped: {parts.join(', ')}.
-    </Typography>
-  )
+  return <Text variant="body2">Skipped: {parts.join(', ')}.</Text>
 }
