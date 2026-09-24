@@ -61,9 +61,9 @@ function createIcon(path: string, displayName: string) {
 }
 
 /*
- * Paths are the Material icon SVGs from @mui/icons-material (and
- * @mui/material's internal icons for Alert / Avatar), so icons look the same
- * as before the migration.
+ * Paths are the Google Material icon SVGs (24x24 viewBox) that the app used
+ * before the StyleX migration, including the Alert / Avatar glyphs, so icons
+ * look the same as before.
  */
 
 export const HomeIcon = createIcon(

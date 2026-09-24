@@ -52,10 +52,11 @@ bun run cf-typegen   # Generate Cloudflare Workers types
 - **TanStack Router** - File-based routing with TypeScript support
 - **React 19.2.0** - Latest React with hooks and concurrent features
 - **TypeScript** - Strict configuration with ES2022 target
-- **StyleX** (`@stylexjs/stylex`, built by `@stylexjs/unplugin`) - styling for
-  all new code; **Base UI** (`@base-ui/react`) - unstyled accessible primitives
-- **MUI v7 with Pigment CSS** - legacy, being migrated away from component by
-  component; do not add new MUI usage
+- **StyleX** (`@stylexjs/stylex`, built by `@stylexjs/unplugin`) - all
+  styling; **Base UI** (`@base-ui/react`) - unstyled accessible primitives,
+  wrapped by the app's own components in `src/components/ui`
+- No MUI, Pigment CSS, Emotion or Tailwind: they were removed; do not add them
+  (or another CSS-in-JS / utility CSS library) back
 - **Cloudflare Workers** - Deployment target
 
 ### Project Structure
@@ -65,7 +66,7 @@ src/
 ├── routes/          # File-based routing (TanStack Router)
 ├── components/      # Reusable React components
 │   └── ui/          # StyleX + Base UI primitives (Button, Text, Dialog, ...)
-├── styles.css       # Global styles
+├── styles/          # app.css (global reset) and StyleX tokens (*.stylex.ts)
 └── api/            # Server functions and API endpoints
 ```
 
@@ -78,9 +79,9 @@ src/
 import { useState, useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-// 2. UI component imports (grouped by library)
-import { Container, Typography, Box, Card } from '@mui/material'
-import { Home, Menu } from '@mui/icons-material'
+// 2. Styling and UI components
+import * as stylex from '@stylexjs/stylex'
+import { Container, HomeIcon, Stack, Text } from '@/components/ui'
 
 // 3. Local imports
 import Header from '../components/Header'
@@ -169,8 +170,8 @@ const getAlbums = createServerFn({
 
 ### Styling Patterns
 
-New UI is styled with StyleX and built on Base UI primitives. MUI + Pigment
-remain only in components not yet migrated.
+All UI is styled with StyleX and built on Base UI primitives, through the
+components in `src/components/ui`.
 
 #### StyleX
 
@@ -216,11 +217,19 @@ export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
   StyleX emits the default unlayered and the `@media` value inside a layer,
   so the default always wins in builds (jsdom tests cannot see this). Put the
   condition in `defineVars` instead (see `src/components/photoGrid.stylex.ts`).
-- Never put StyleX styles on MUI components: StyleX output lives in CSS
-  `@layer`s and unlayered MUI/Pigment CSS beats it. Convert whole components.
 - Global base styles go in `src/styles/app.css` inside `@layer reset` (StyleX
-  layers are declared after it). It is side-effect imported from `__root.tsx`;
-  never link it with `?url`, since StyleX appends its build output to it.
+  layers are declared after it, via `stylexBuildOptions` in `vite/stylex.ts`).
+  Never add CSS outside a layer, and never add other global stylesheets:
+  unlayered CSS beats every StyleX rule. `src/styles/layers.test.ts` builds
+  app.css with the UI primitives and fails if `reset` is not declared first or
+  if any unlayered rule sets a regular property (StyleX's own unlayered
+  output, `defineVars` blocks, `@property` and `@keyframes`, only sets custom
+  properties). app.css is side-effect imported from `__root.tsx`; never link
+  it with `?url`, since StyleX appends its build output to it.
+- Fonts: Roboto (300/400/500/700) from Google Fonts, linked in `__root.tsx`.
+  Icons are inline SVG components (`*Icon` in `src/components/ui/Icon.tsx`,
+  Material icon paths); there is no icon font. Add a new icon there with
+  `createIcon(path, name)` rather than a dependency.
 - In dev, StyleX rules are served from `/virtual:stylex.css` and kept fresh by
   `virtual:stylex:runtime` (both wired up in `__root.tsx`).
 - Tests: vitest compiles StyleX with runtime injection, so component tests can
@@ -232,9 +241,9 @@ export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
 
 #### UI primitives (`src/components/ui`)
 
-Build pages from these instead of MUI; import from `@/components/ui`. They
-mirror the MUI components (and default theme) they replace, so props look
-familiar: `Button` (`variant`, `size`, `color`, `startIcon`, `href`),
+Build pages from these; import from `@/components/ui`. They mirror the MUI
+components (and MUI default theme) the app used before the migration, so
+props look familiar: `Button` (`variant`, `size`, `color`, `startIcon`, `href`),
 `IconButton`, `Text` (Typography: `variant`, `color`, `as`, `gutterBottom`),
 `Container`, `Stack` (`direction` / `gap` in 8px units, responsive objects
 like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
@@ -259,9 +268,9 @@ like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
   imperative form. Unlike MUI's Snackbar it is not dismissed by clicking
   elsewhere: it stays until its close button, its `timeout`, or `open`
   turning false.
-- MUI's `CssBaseline` is gone: `src/styles/app.css` replicates its reset
-  (border-box sizing, body typography and colors) inside `@layer reset`, so
-  StyleX styles, including `boxSizing`, always win over it.
+- `src/styles/app.css` replicates MUI's old `CssBaseline` reset (border-box
+  sizing, body typography and colors) inside `@layer reset`, so StyleX
+  styles, including `boxSizing`, always win over it.
 
 ### Naming Conventions
 
@@ -498,7 +507,8 @@ const mutation = useMutation({
 - Development server on port 3000
 - Hot module replacement
 - TypeScript with path aliases
-- StyleX via `@stylexjs/unplugin` (Pigment CSS still loaded for legacy MUI)
+- StyleX via `@stylexjs/unplugin` (`stylexBuildOptions` in `vite/stylex.ts`;
+  `vitest.config.ts` reuses its aliases but injects rules at runtime, unlayered)
 - Cloudflare Workers environment
 
 This document serves as the primary reference for maintaining code consistency and leveraging the TanStack ecosystem effectively.

@@ -11,7 +11,7 @@ of the variants `mobile_sm`, `mobile_lg`, `tablet`, `laptop`, `desktop`.
 ## Stack
 
 - TanStack Start + Router (file-based routes in `src/routes`)
-- React 19, MUI v7 with Pigment CSS, Tailwind v4 for layout utilities
+- React 19, StyleX for styling, Base UI for accessible primitives
 - Drizzle ORM over Cloudflare D1 (`src/db`)
 - Cloudflare Workers via `@cloudflare/vite-plugin` and wrangler
 - Biome for lint/format, Vitest for tests, lefthook for pre-commit hooks
