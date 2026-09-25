@@ -7,7 +7,7 @@ import {
   adminPollGooglePick,
   adminStartGooglePick,
 } from '@/api/admin-google'
-import { renderWithRouter } from '@/components/ui/test-utils'
+import { renderWithRouter, styleOf } from '@/components/ui/test-utils'
 import { GoogleImportDialog } from './GoogleImportDialog'
 
 vi.mock('@/api/admin-google', () => ({
@@ -111,11 +111,10 @@ describe('GoogleImportDialog', () => {
     expect(poll).toHaveBeenCalledTimes(2)
     expect(poll).toHaveBeenLastCalledWith({ data: { importId: 9 } })
     expect(queued.closest('[role="alert"]')).not.toBeNull()
-    expect(
-      screen.getByText(
-        'Skipped: 1 already in the album (same Google id), 2 not a supported photo, 1 duplicate filename.',
-      ),
-    ).toBeTruthy()
+    const skipped = screen.getByText(
+      'Skipped: 1 already in the album (same Google id), 2 not a supported photo, 1 duplicate filename.',
+    )
+    expect(styleOf(skipped, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(
       screen.getByRole('link', { name: 'import page' }).getAttribute('href'),
     ).toBe('/admin/imports/9')

@@ -29,10 +29,7 @@ const styles = stylex.create({
   progress: { minWidth: '160px' },
 })
 
-/**
- * "3 / 12 done, 1 failed" with a progress bar. The caption is not grey: on
- * the MUI + Pigment build `color="text.secondary"` never applied.
- */
+/** "3 / 12 done, 1 failed" with a progress bar. */
 export function ImportProgress({ counts }: { counts: ImportCounts }) {
   const finished = counts.done + counts.failed
   const percent = counts.total ? (finished / counts.total) * 100 : 100
@@ -48,7 +45,9 @@ export function ImportProgress({ counts }: { counts: ImportCounts }) {
         color={counts.failed ? 'error' : 'primary'}
         aria-label={summary}
       />
-      <Text variant="caption">{summary}</Text>
+      <Text variant="caption" color="textSecondary">
+        {summary}
+      </Text>
     </Stack>
   )
 }

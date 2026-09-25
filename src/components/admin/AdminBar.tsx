@@ -26,8 +26,6 @@ const styles = stylex.create({
   spacer: { flexGrow: 1 },
 })
 
-// The email is not grey: on the MUI + Pigment build `color="text.secondary"`
-// on Typography never applied, and this keeps the live look.
 export function AdminBar({ user }: { user: AdminUser }) {
   return (
     <div {...stylex.props(styles.bar)}>
@@ -50,7 +48,9 @@ export function AdminBar({ user }: { user: AdminUser }) {
           Imports
         </Button>
         <div {...stylex.props(styles.spacer)} />
-        <Text variant="body2">{user.email}</Text>
+        <Text variant="body2" color="textSecondary">
+          {user.email}
+        </Text>
         <form method="post" action="/api/auth/logout">
           <Button type="submit" size="small" variant="outlined">
             Sign out

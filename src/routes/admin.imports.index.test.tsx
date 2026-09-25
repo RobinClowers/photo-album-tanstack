@@ -25,8 +25,7 @@ describe('/admin/imports', () => {
     })
     expect(styleOf(heading, 'margin-bottom')).toBe('0.35em')
     const empty = screen.getByText(/^No imports yet/)
-    // Not grey: main's `color="text.secondary"` never applied under Pigment.
-    expect(styleOf(empty, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    expect(styleOf(empty, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(screen.queryByRole('table')).toBeNull()
     const page = heading.parentElement as HTMLElement
     expect(styleOf(page, 'padding-top')).toBe('32px')
@@ -45,10 +44,9 @@ describe('/admin/imports', () => {
       '/admin/imports/5',
       '/admin/imports/6',
     ])
-    // Main's `whiteSpace: 'nowrap'` never applied under Pigment.
     expect(
       styleOf(started[0]?.parentElement as HTMLElement, 'white-space'),
-    ).toBe('')
+    ).toBe('nowrap')
     expect(
       screen.getByRole('link', { name: 'Iceland' }).getAttribute('href'),
     ).toBe('/admin/albums/7')

@@ -17,7 +17,7 @@ describe('AlbumTable', () => {
     const empty = screen.getByText('None.')
     expect(empty.tagName).toBe('P')
     expect(declaredStyle(empty, 'padding')).toBe('16px')
-    expect(styleOf(empty, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    expect(styleOf(empty, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(screen.queryByRole('table')).toBeNull()
   })
 
@@ -44,6 +44,9 @@ describe('AlbumTable', () => {
       '2024-06-01',
       'Publish',
     ])
+    expect(styleOf(screen.getByText('iceland'), 'color')).toBe(
+      'rgba(0, 0, 0, 0.6)',
+    )
     const thumbnail = cells[0]?.querySelector('img') as HTMLImageElement
     expect(thumbnail.getAttribute('src')).toMatch(
       /iceland\/mobile_sm\/falls\.jpg$/,

@@ -31,7 +31,7 @@ import {
   Toast,
 } from '@/components/ui'
 import { breakpoints } from '@/styles/breakpoints.stylex'
-import { space } from '@/styles/tokens.stylex'
+import { colors, space } from '@/styles/tokens.stylex'
 import { parseRecordId } from '@/utils/id'
 
 export const Route = createFileRoute('/admin/imports/$id')({
@@ -49,20 +49,24 @@ export const Route = createFileRoute('/admin/imports/$id')({
   component: ImportPage,
 })
 
-/*
- * On the MUI + Pigment build the `sx` on this route's Paper (padding), Alert
- * (top margin) and table cells (red monospace errors, nowrap dates), and
- * `color="text.secondary"` on the start time, never applied. This keeps the
- * live look: an unpadded summary box and plain cells.
- */
 const styles = stylex.create({
   notFound: { paddingTop: space.s4, paddingBottom: space.s4 },
   page: { paddingTop: space.s3, paddingBottom: space.s3 },
   toolbar: { display: 'flex', alignItems: 'center', gap: space.s2 },
   grow: { flexGrow: 1 },
+  summaryBox: { padding: space.s2 },
   summary: {
     alignItems: { default: null, [breakpoints.smUp]: 'center' },
   },
+  error: { marginTop: space.s2 },
+  lastError: {
+    color: colors.error,
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    maxWidth: '480px',
+    overflowWrap: 'anywhere',
+  },
+  nowrap: { whiteSpace: 'nowrap' },
 })
 
 function ImportPage() {
@@ -96,7 +100,7 @@ function ImportPage() {
           )}
         </div>
 
-        <Paper variant="outlined">
+        <Paper variant="outlined" xstyle={styles.summaryBox}>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             gap={3}
@@ -118,7 +122,7 @@ function ImportPage() {
                   </>
                 )}
               </Text>
-              <Text variant="body2">
+              <Text variant="body2" color="textSecondary">
                 Started {formatTimestamp(record.createdAt)}
                 {record.finishedAt &&
                   `, finished ${formatTimestamp(record.finishedAt)}`}
@@ -127,7 +131,11 @@ function ImportPage() {
             <StatusChip status={record.status} />
             <ImportProgress counts={record.counts} />
           </Stack>
-          {record.error && <Alert severity="error">{record.error}</Alert>}
+          {record.error && (
+            <Alert severity="error" xstyle={styles.error}>
+              {record.error}
+            </Alert>
+          )}
         </Paper>
 
         <TableContainer paper="elevation">
@@ -149,8 +157,12 @@ function ImportPage() {
                     <StatusChip status={item.status} />
                   </TableCell>
                   <TableCell align="right">{item.attempts}</TableCell>
-                  <TableCell>{item.lastError}</TableCell>
-                  <TableCell>{formatTimestamp(item.updatedAt)}</TableCell>
+                  <TableCell xstyle={styles.lastError}>
+                    {item.lastError}
+                  </TableCell>
+                  <TableCell xstyle={styles.nowrap}>
+                    {formatTimestamp(item.updatedAt)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

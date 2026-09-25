@@ -85,13 +85,6 @@ export const Route = createFileRoute('/admin/albums/$id')({
   component: AdminAlbumPage,
 })
 
-/*
- * On the MUI + Pigment build the `sx` on this route's details form (Paper
- * padding, TextField flex sizes, Save alignment) and `color="text.secondary"`
- * on the empty-photos text never applied. This keeps the live look: an
- * unpadded form whose fields take their natural width and a Save button
- * stretched to the row height.
- */
 const styles = stylex.create({
   notFound: { paddingTop: space.s4, paddingBottom: space.s4 },
   page: { paddingTop: space.s3, paddingBottom: space.s3 },
@@ -102,7 +95,11 @@ const styles = stylex.create({
     gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
     gap: space.s2,
   },
+  form: { padding: space.s2 },
   fields: { display: 'flex', gap: space.s2, flexWrap: 'wrap' },
+  titleField: { flex: '2 1 240px' },
+  slugField: { flex: '1 1 240px' },
+  save: { alignSelf: 'flex-start' },
 })
 
 function AdminAlbumPage() {
@@ -206,7 +203,7 @@ function AdminAlbumPage() {
             Photos ({album.photos.length})
           </Text>
           {album.photos.length === 0 ? (
-            <Text>
+            <Text color="textSecondary">
               No photos yet. Use "Import from Google Photos" to add some.
             </Text>
           ) : (
@@ -342,6 +339,7 @@ function AlbumDetailsForm({
 
   return (
     <Paper
+      xstyle={styles.form}
       render={
         <form
           onSubmit={(e) => {
@@ -358,6 +356,7 @@ function AlbumDetailsForm({
           onChange={(e) => setTitle(e.target.value)}
           required
           size="small"
+          xstyle={styles.titleField}
         />
         <TextField
           label="Slug"
@@ -365,6 +364,7 @@ function AlbumDetailsForm({
           onChange={(e) => setSlug(e.target.value)}
           required
           size="small"
+          xstyle={styles.slugField}
           error={Boolean(slugError)}
           helperText={
             slugError
@@ -376,6 +376,7 @@ function AlbumDetailsForm({
           type="submit"
           variant="contained"
           disabled={pending || !dirty || !title.trim() || !isValidSlug(slug)}
+          xstyle={styles.save}
         >
           Save
         </Button>

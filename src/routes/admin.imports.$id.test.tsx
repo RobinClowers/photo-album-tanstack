@@ -35,7 +35,7 @@ describe('/admin/imports/$id', () => {
     const started = screen.getByText(
       'Started 2024-06-02 08:30, finished 2024-06-02 08:35',
     )
-    expect(styleOf(started, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    expect(styleOf(started, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(screen.getByRole('alert').textContent).toBe('Queue send failed')
     const back = screen.getByRole('link', { name: 'All imports' })
     expect(back.getAttribute('href')).toBe('/admin/imports')
@@ -52,22 +52,22 @@ describe('/admin/imports/$id', () => {
     ])
   })
 
-  // Main's `sx` on this route's Paper, Alert and cells never applied under
-  // Pigment; the page keeps that live look.
-  it('matches the live layout of the MUI build', async () => {
+  // The styles main's `sx` asked for (they never applied under Pigment).
+  it('pads the summary and styles the error cells', async () => {
     renderImport()
     await screen.findByRole('heading', { level: 1 })
     const alert = screen.getByRole('alert')
     const summary = alert.parentElement as HTMLElement
     expect(styleOf(summary, 'border-top-width')).toBe('1px')
-    expect(declaredStyle(summary, 'padding')).toBe('')
-    expect(styleOf(alert, 'margin-top')).toBe('')
+    expect(declaredStyle(summary, 'padding')).toBe('16px')
+    expect(styleOf(alert, 'margin-top')).toBe('16px')
     const error = screen.getByText('Error: fetch failed')
-    expect(styleOf(error, 'font-family')).not.toBe('monospace')
-    expect(styleOf(error, 'font-size')).toBe('0.875rem')
-    expect(styleOf(error, 'color')).not.toBe('#d32f2f')
+    expect(styleOf(error, 'font-family')).toBe('monospace')
+    expect(styleOf(error, 'font-size')).toBe('12px')
+    expect(styleOf(error, 'color')).toBe('#d32f2f')
+    expect(styleOf(error, 'max-width')).toBe('480px')
     const updated = screen.getByText('2024-06-02 08:35', { selector: 'td' })
-    expect(styleOf(updated, 'white-space')).toBe('')
+    expect(styleOf(updated, 'white-space')).toBe('nowrap')
   })
 
   it('retries failed items', async () => {

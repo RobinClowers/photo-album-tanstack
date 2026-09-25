@@ -268,7 +268,6 @@ export function GoogleImportDialog({
   )
 }
 
-// Not grey: on the MUI + Pigment build `color="text.secondary"` never applied.
 function SkippedSummary({ skipped }: { skipped: PickPlan['skipped'] }) {
   const parts = [
     skipped.existingById
@@ -283,5 +282,9 @@ function SkippedSummary({ skipped }: { skipped: PickPlan['skipped'] }) {
       : null,
   ].filter((p): p is string => p !== null)
   if (parts.length === 0) return null
-  return <Text variant="body2">Skipped: {parts.join(', ')}.</Text>
+  return (
+    <Text variant="body2" color="textSecondary">
+      Skipped: {parts.join(', ')}.
+    </Text>
+  )
 }

@@ -45,8 +45,8 @@ describe('ImportProgress', () => {
     const caption = screen.getByText(summary)
     expect(caption.tagName).toBe('SPAN')
     expect(styleOf(caption, 'font-size')).toBe('0.75rem')
-    // Not grey: main's `color="text.secondary"` never applied under Pigment.
-    expect(styleOf(caption, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    // Secondary grey, as main's `color="text.secondary"` intended.
+    expect(styleOf(caption, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(styleOf(caption.parentElement as HTMLElement, 'min-width')).toBe(
       '160px',
     )

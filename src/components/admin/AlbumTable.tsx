@@ -26,8 +26,6 @@ function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : ''
 }
 
-// Slugs and the empty state are not grey: on the MUI + Pigment build
-// `color="text.secondary"` on Typography never applied.
 const styles = stylex.create({
   empty: { padding: space.s2 },
   title: { fontWeight: font.weightMedium },
@@ -45,7 +43,11 @@ export function AlbumTable({
   pending: boolean
 }) {
   if (albums.length === 0) {
-    return <Text xstyle={styles.empty}>None.</Text>
+    return (
+      <Text color="textSecondary" xstyle={styles.empty}>
+        None.
+      </Text>
+    )
   }
   return (
     <TableContainer paper="elevation">
@@ -84,7 +86,9 @@ export function AlbumTable({
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Text variant="body2">{album.slug}</Text>
+                  <Text variant="body2" color="textSecondary">
+                    {album.slug}
+                  </Text>
                 </TableCell>
                 <TableCell align="right">{album.photoCount}</TableCell>
                 <TableCell>{formatDate(album.firstPhotoTakenAt)}</TableCell>

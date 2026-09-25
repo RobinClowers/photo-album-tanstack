@@ -21,8 +21,8 @@ describe('AdminBar', () => {
     expect(styleOf(imports, 'text-transform')).toBe('uppercase')
     const email = screen.getByText('admin@example.com')
     expect(email.tagName).toBe('P')
-    // Not grey: main's `color="text.secondary"` never applied under Pigment.
-    expect(styleOf(email, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    // Secondary grey, as main's `color="text.secondary"` intended.
+    expect(styleOf(email, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     const bar = brand.parentElement?.parentElement as HTMLElement
     expect(styleOf(bar, 'background-color')).toBe('#f5f5f5')
     expect(styleOf(bar, 'border-bottom-width')).toBe('1px')

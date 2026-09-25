@@ -135,7 +135,7 @@ describe('/admin/albums/$id', () => {
     fireEvent.click(trigger)
     expect(screen.queryByRole('menu')).toBeNull()
     const empty = screen.getByText(/^No photos yet/)
-    expect(styleOf(empty, 'color')).not.toBe('rgba(0, 0, 0, 0.6)')
+    expect(styleOf(empty, 'color')).toBe('rgba(0, 0, 0, 0.6)')
     expect(screen.queryByRole('heading', { name: 'Recent imports' })).toBeNull()
   })
 
@@ -197,16 +197,17 @@ describe('/admin/albums/$id', () => {
     expect(message.closest('[role="alertdialog"]')).not.toBeNull()
   })
 
-  // Main's `sx` on the details form never applied under Pigment; the page
-  // keeps that live look.
-  it('matches the live layout of the MUI build', async () => {
+  // The styles main's `sx` asked for (they never applied under Pigment).
+  it('pads the details form and sizes its fields', async () => {
     renderAlbum()
     const save = await screen.findByRole('button', { name: 'Save' })
     const form = save.closest('form') as HTMLElement
-    expect(declaredStyle(form, 'padding')).toBe('')
-    expect(styleOf(save, 'align-self')).toBe('')
+    expect(declaredStyle(form, 'padding')).toBe('16px')
+    expect(styleOf(save, 'align-self')).toBe('flex-start')
     const slugField = save.previousElementSibling as HTMLElement
-    expect(styleOf(slugField, 'flex')).toBe('')
+    expect(declaredStyle(slugField, 'flex')).toBe('1 1 240px')
+    const titleField = slugField.previousElementSibling as HTMLElement
+    expect(declaredStyle(titleField, 'flex')).toBe('2 1 240px')
     expect(
       screen.getByText(
         'Changing the slug changes the public URL and the storage path prefix for new uploads',

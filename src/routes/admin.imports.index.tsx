@@ -26,10 +26,9 @@ export const Route = createFileRoute('/admin/imports/')({
   component: ImportsPage,
 })
 
-// The empty-state text is not grey and the Started column may wrap: on the
-// MUI + Pigment build that `color` and cell `sx` never applied.
 const styles = stylex.create({
   page: { paddingTop: space.s4, paddingBottom: space.s4 },
+  started: { whiteSpace: 'nowrap' },
 })
 
 function ImportsPage() {
@@ -42,7 +41,7 @@ function ImportsPage() {
         Imports
       </Text>
       {imports.length === 0 ? (
-        <Text>
+        <Text color="textSecondary">
           No imports yet. Start one from an album page with "Reprocess
           variants".
         </Text>
@@ -61,7 +60,7 @@ function ImportsPage() {
             <TableBody>
               {imports.map((record) => (
                 <TableRow key={record.id} hover>
-                  <TableCell>
+                  <TableCell xstyle={styles.started}>
                     <Link
                       to="/admin/imports/$id"
                       params={{ id: String(record.id) }}
