@@ -2,6 +2,7 @@ import {
   createStartHandler,
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
+import { withPageCacheHeaders } from '@/server/cache'
 import {
   handlePhotoQueue,
   type PhotoQueueMessage,
@@ -18,7 +19,8 @@ const startFetch = createStartHandler(defaultStreamHandler)
 
 export default {
   // Start's handler takes (request, opts); Workers pass (request, env, ctx).
-  fetch: (request: Request) => startFetch(request),
+  fetch: async (request: Request) =>
+    withPageCacheHeaders(request, await startFetch(request)),
   queue: (batch: MessageBatch<PhotoQueueMessage>, env: Env) =>
     handlePhotoQueue(batch, env),
   scheduled: (_controller: ScheduledController, env: Env) =>

@@ -1,10 +1,12 @@
 import { Container, Link as MuiLink, Typography } from '@mui/material'
 import { createFileRoute } from '@tanstack/react-router'
+import { publicPageHeaders } from '@/utils/cacheControl'
 
 const CONTACT_EMAIL = 'robin@poggiolabs.com'
 const LAST_UPDATED = 'September 13, 2026'
 
 export const Route = createFileRoute('/privacy')({
+  headers: publicPageHeaders,
   component: PrivacyPage,
   head: () => ({
     meta: [
