@@ -31,8 +31,8 @@ describe('/albums/$slug/$filename', () => {
     renderPhoto({ previousPhotoFilename: 'a.jpg', nextPhotoFilename: 'c.jpg' })
     const back = await screen.findByRole('link', { name: 'Back to album' })
     expect(back.getAttribute('href')).toBe('/albums/iceland')
-    // Main's `sx={{ mr: 2 }}` never applied under Pigment: the title sits
-    // right against the button.
+    // No gap after the arrow: kept as the live site shows it, not main's
+    // `sx={{ mr: 2 }}`, which never applied under Pigment.
     expect(styleOf(back, 'margin-right')).toBe('0px')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Back to Iceland',

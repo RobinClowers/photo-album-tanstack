@@ -36,11 +36,11 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
-// Only the Container padding is styled: on the MUI + Pigment build the `sx`
-// on Paper, Typography and Alert (padding, centring, grey intro, margins) never
-// reached the page, and this conversion keeps the live look.
 const styles = stylex.create({
   page: { paddingTop: space.s8, paddingBottom: space.s8 },
+  card: { padding: space.s4, textAlign: 'center' },
+  intro: { marginBottom: space.s3 },
+  alert: { marginBottom: space.s3, textAlign: 'left' },
 })
 
 function LoginPage() {
@@ -49,12 +49,18 @@ function LoginPage() {
 
   return (
     <Container maxWidth="xs" xstyle={styles.page}>
-      <Paper>
+      <Paper xstyle={styles.card}>
         <Text variant="h5" as="h1" gutterBottom>
           Admin sign in
         </Text>
-        <Text variant="body2">Only the site administrator can sign in.</Text>
-        {message && <Alert severity="error">{message}</Alert>}
+        <Text variant="body2" color="textSecondary" xstyle={styles.intro}>
+          Only the site administrator can sign in.
+        </Text>
+        {message && (
+          <Alert severity="error" xstyle={styles.alert}>
+            {message}
+          </Alert>
+        )}
         <Button
           href="/api/auth/google/login"
           variant="contained"

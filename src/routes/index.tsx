@@ -2,7 +2,7 @@ import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getAllAlbums } from '@/api/albums'
 import { Card, CardMedia, Container, Text } from '@/components/ui'
-import { space } from '@/styles/tokens.stylex'
+import { elevation, space } from '@/styles/tokens.stylex'
 import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/')({
@@ -20,6 +20,15 @@ const styles = stylex.create({
     gap: space.s3,
   },
   link: { textDecoration: 'none' },
+  card: {
+    cursor: 'pointer',
+    transitionProperty: 'transform, box-shadow',
+    transitionDuration: '0.2s',
+    transitionTimingFunction: 'ease',
+    transform: { default: null, ':hover': 'translateY(-4px)' },
+    boxShadow: { default: elevation.e1, ':hover': elevation.e4 },
+  },
+  title: { marginTop: space.s1, marginBottom: space.s1, fontWeight: 400 },
 })
 
 function IndexPage() {
@@ -37,7 +46,7 @@ function IndexPage() {
             key={album.id}
             {...stylex.props(styles.link)}
           >
-            <Card>
+            <Card xstyle={styles.card}>
               {album.cover_photo && (
                 <CardMedia
                   height="180"
@@ -48,7 +57,7 @@ function IndexPage() {
                   alt={album.title}
                 />
               )}
-              <Text variant="h6" as="h2" align="center">
+              <Text variant="h6" as="h2" align="center" xstyle={styles.title}>
                 {album.title}
               </Text>
             </Card>

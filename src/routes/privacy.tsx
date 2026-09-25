@@ -21,10 +21,10 @@ export const Route = createFileRoute('/privacy')({
   }),
 })
 
-// The Typography `sx` margins and `color="text.secondary"` on main never
-// reached the page under Pigment, so only the Container padding is kept.
 const styles = stylex.create({
   page: { paddingTop: space.s4, paddingBottom: space.s4 },
+  intro: { marginTop: space.s2 },
+  section: { marginTop: space.s3 },
 })
 
 function PrivacyPage() {
@@ -33,17 +33,17 @@ function PrivacyPage() {
       <Text variant="h4" as="h1" gutterBottom>
         Privacy policy
       </Text>
-      <Text variant="body2" gutterBottom>
+      <Text variant="body2" color="textSecondary" gutterBottom>
         Last updated {LAST_UPDATED}
       </Text>
 
-      <Text variant="body1" paragraph>
+      <Text variant="body1" paragraph xstyle={styles.intro}>
         Robinʼs Photos is a personal photo album site. Visitors can browse
         published albums without signing in, and no account is required to view
         anything on the site.
       </Text>
 
-      <Text variant="h6" as="h2" gutterBottom>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Visitors
       </Text>
       <Text variant="body1" paragraph>
@@ -54,7 +54,7 @@ function PrivacyPage() {
         which records similar access logs.
       </Text>
 
-      <Text variant="h6" as="h2" gutterBottom>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Administrator sign-in with Google
       </Text>
       <Text variant="body1" paragraph>
@@ -89,7 +89,7 @@ function PrivacyPage() {
         , including the Limited Use requirements.
       </Text>
 
-      <Text variant="h6" as="h2" gutterBottom>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Sharing
       </Text>
       <Text variant="body1" paragraph>
@@ -97,7 +97,7 @@ function PrivacyPage() {
         the infrastructure providers named above that host the site.
       </Text>
 
-      <Text variant="h6" as="h2" gutterBottom>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Contact
       </Text>
       <Text variant="body1" paragraph>

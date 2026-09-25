@@ -58,7 +58,7 @@ describe('/', () => {
     ).toBeNull()
   })
 
-  it('centers a fixed-width grid of cards', async () => {
+  it('centers a fixed-width grid of lifting cards', async () => {
     renderRoute(Route, {
       id: '/',
       path: '/',
@@ -67,17 +67,13 @@ describe('/', () => {
     })
     const title = await screen.findByRole('heading', { name: 'Iceland' })
     expect(getComputedStyle(title).textAlign).toBe('center')
-    // Plain h6 (weight 500, no margins): main's `sx={{ my: 1, fontWeight:
-    // 400 }}` and the card hover lift never applied under Pigment.
-    expect(styleOf(title, 'font-weight')).toBe('500')
-    expect(styleOf(title, 'margin-top')).toBe('0px')
-    expect(styleOf(title, 'margin-bottom')).toBe('0px')
+    expect(getComputedStyle(title).fontWeight).toBe('400')
+    expect(styleOf(title, 'margin-top')).toBe('8px')
     const card = title.parentElement as HTMLElement
     expect(styleOf(card, 'box-shadow')).toBe(
       '0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12)',
     )
-    expect(getComputedStyle(card).transitionProperty).toBe('box-shadow')
-    expect(getComputedStyle(card).transform).toBe('')
+    expect(getComputedStyle(card).cursor).toBe('pointer')
     const grid = card.parentElement?.parentElement as HTMLElement
     expect(getComputedStyle(grid).display).toBe('grid')
     expect(getComputedStyle(grid).gridTemplateColumns).toBe(
