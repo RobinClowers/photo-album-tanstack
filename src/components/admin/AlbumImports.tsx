@@ -1,12 +1,12 @@
+import * as stylex from '@stylexjs/stylex'
 import {
-  Paper,
+  Link,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableRow,
-} from '@mui/material'
-import { Link } from '@tanstack/react-router'
+} from '@/components/ui'
 import type { AlbumImportRow } from '@/db/imports'
 import {
   formatTimestamp,
@@ -15,19 +15,23 @@ import {
   StatusChip,
 } from './ImportStatus'
 
+const styles = stylex.create({
+  nowrap: { whiteSpace: 'nowrap' },
+})
+
 /** The album page's compact list of its latest imports. */
 export function AlbumImports({ imports }: { imports: AlbumImportRow[] }) {
   return (
-    <TableContainer component={Paper} variant="outlined">
+    <TableContainer paper="outlined">
       <Table size="small">
         <TableBody>
           {imports.map((record) => (
             <TableRow key={record.id} hover>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+              <TableCell xstyle={styles.nowrap}>
                 <Link
                   to="/admin/imports/$id"
                   params={{ id: String(record.id) }}
-                  style={{ color: 'inherit' }}
+                  color="inherit"
                 >
                   {formatTimestamp(record.createdAt)}
                 </Link>

@@ -1,7 +1,15 @@
-import { Google } from '@mui/icons-material'
-import { Alert, Button, Container, Paper, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getCurrentUser } from '@/api/auth'
+import {
+  Alert,
+  Button,
+  Container,
+  GoogleIcon,
+  Paper,
+  Text,
+} from '@/components/ui'
+import { space } from '@/styles/tokens.stylex'
 import { type LoginError, parseLoginError } from '@/utils/loginErrors'
 
 const ERROR_MESSAGES: Record<LoginError, string> = {
@@ -28,29 +36,35 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
+const styles = stylex.create({
+  page: { paddingTop: space.s8, paddingBottom: space.s8 },
+  card: { padding: space.s4, textAlign: 'center' },
+  intro: { marginBottom: space.s3 },
+  alert: { marginBottom: space.s3, textAlign: 'left' },
+})
+
 function LoginPage() {
   const { error } = Route.useSearch()
   const message = error ? ERROR_MESSAGES[error] : undefined
 
   return (
-    <Container maxWidth="xs" sx={{ py: 8 }}>
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h5" component="h1" gutterBottom>
+    <Container maxWidth="xs" xstyle={styles.page}>
+      <Paper xstyle={styles.card}>
+        <Text variant="h5" as="h1" gutterBottom>
           Admin sign in
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        </Text>
+        <Text variant="body2" color="textSecondary" xstyle={styles.intro}>
           Only the site administrator can sign in.
-        </Typography>
+        </Text>
         {message && (
-          <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
+          <Alert severity="error" xstyle={styles.alert}>
             {message}
           </Alert>
         )}
         <Button
-          component="a"
           href="/api/auth/google/login"
           variant="contained"
-          startIcon={<Google />}
+          startIcon={<GoogleIcon />}
           fullWidth
         >
           Sign in with Google

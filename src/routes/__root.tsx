@@ -2,10 +2,15 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 
-import '@pigment-css/react/styles.css'
+import '@/styles/app.css'
 
-import { CssBaseline } from '@mui/material'
 import { Header } from '@/components/Header'
+
+// Dev only: keeps /virtual:stylex.css in sync as modules (re)compile,
+// including client-only routes compiled after the first stylesheet fetch.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  void import('virtual:stylex:runtime')
+}
 
 export const Route = createRootRoute({
   head: () => ({
@@ -22,13 +27,14 @@ export const Route = createRootRoute({
       },
     ],
     links: [
+      // StyleX serves its collected rules from a virtual module in dev only;
+      // in builds they are appended to app.css.
+      ...(import.meta.env.DEV
+        ? [{ rel: 'stylesheet', href: '/virtual:stylex.css' }]
+        : []),
       {
         rel: 'stylesheet',
         href: 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/icon?family=Material+Icons',
       },
     ],
   }),
@@ -44,7 +50,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Header />
-        <CssBaseline />
         {children}
         <TanStackDevtools
           config={{

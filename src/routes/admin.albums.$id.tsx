@@ -1,22 +1,4 @@
-import { ArrowBack, ArrowDropDown, OpenInNew } from '@mui/icons-material'
-import {
-  Alert,
-  Box,
-  Button,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Menu,
-  MenuItem,
-  Paper,
-  Snackbar,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
@@ -37,7 +19,27 @@ import { GoogleImportDialog } from '@/components/admin/GoogleImportDialog'
 import { type AdminPhoto, PhotoTile } from '@/components/admin/PhotoTile'
 import { useAdminAction } from '@/components/admin/useAdminAction'
 import { usePollWhile } from '@/components/admin/usePollWhile'
+import {
+  ArrowBackIcon,
+  ArrowDropDownIcon,
+  Button,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Menu,
+  MenuItem,
+  OpenInNewIcon,
+  Paper,
+  Stack,
+  Text,
+  TextField,
+  Toast,
+} from '@/components/ui'
 import type { AdminAlbumDetails } from '@/db/admin'
+import { space } from '@/styles/tokens.stylex'
 import { parseRecordId } from '@/utils/id'
 import { isValidSlug } from '@/utils/slug'
 
@@ -76,18 +78,34 @@ export const Route = createFileRoute('/admin/albums/$id')({
     return { album, imports }
   },
   notFoundComponent: () => (
-    <Container sx={{ py: 4 }}>
-      <Typography>Album not found.</Typography>
+    <Container xstyle={styles.notFound}>
+      <Text>Album not found.</Text>
     </Container>
   ),
   component: AdminAlbumPage,
+})
+
+const styles = stylex.create({
+  notFound: { paddingTop: space.s4, paddingBottom: space.s4 },
+  page: { paddingTop: space.s3, paddingBottom: space.s3 },
+  toolbar: { display: 'flex', alignItems: 'center', gap: space.s2 },
+  grow: { flexGrow: 1 },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+    gap: space.s2,
+  },
+  form: { padding: space.s2 },
+  fields: { display: 'flex', gap: space.s2, flexWrap: 'wrap' },
+  titleField: { flex: '2 1 240px' },
+  slugField: { flex: '1 1 240px' },
+  save: { alignSelf: 'flex-start' },
 })
 
 function AdminAlbumPage() {
   const { album, imports } = Route.useLoaderData()
   const { run, pending, error, clearError } = useAdminAction()
   const [toDelete, setToDelete] = useState<AdminPhoto | null>(null)
-  const [reprocessMenu, setReprocessMenu] = useState<HTMLElement | null>(null)
   const { google } = Route.useSearch()
   // Connecting Google Photos round-trips through Google and lands back here;
   // reopen the dialog so the admin can carry on where they left off.
@@ -98,26 +116,21 @@ function AdminAlbumPage() {
   const published = Boolean(album.publishedAt)
   usePollWhile(imports.some((i) => i.status === 'running'))
 
-  const reprocessAlbum = (force: boolean) => {
-    setReprocessMenu(null)
-    return run(() =>
-      adminReprocessAlbum({ data: { albumId: album.id, force } }),
-    )
-  }
+  const reprocessAlbum = (force: boolean) =>
+    run(() => adminReprocessAlbum({ data: { albumId: album.id, force } }))
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Stack spacing={3}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Container maxWidth="xl" xstyle={styles.page}>
+      <Stack gap={3}>
+        <div {...stylex.props(styles.toolbar)}>
           <Button
-            component={Link}
-            to="/admin"
-            startIcon={<ArrowBack />}
+            render={<Link to="/admin" />}
+            startIcon={<ArrowBackIcon />}
             size="small"
           >
             All albums
           </Button>
-          <Box sx={{ flexGrow: 1 }} />
+          <div {...stylex.props(styles.grow)} />
           <Button
             size="small"
             variant="outlined"
@@ -126,18 +139,16 @@ function AdminAlbumPage() {
           >
             Import from Google Photos
           </Button>
-          <Button
-            size="small"
-            endIcon={<ArrowDropDown />}
-            disabled={pending || album.photos.length === 0}
-            onClick={(e) => setReprocessMenu(e.currentTarget)}
-          >
-            Reprocess variants
-          </Button>
           <Menu
-            anchorEl={reprocessMenu}
-            open={Boolean(reprocessMenu)}
-            onClose={() => setReprocessMenu(null)}
+            trigger={
+              <Button
+                size="small"
+                endIcon={<ArrowDropDownIcon />}
+                disabled={pending || album.photos.length === 0}
+              >
+                Reprocess variants
+              </Button>
+            }
           >
             <MenuItem onClick={() => reprocessAlbum(false)}>
               Generate missing sizes only
@@ -148,11 +159,10 @@ function AdminAlbumPage() {
           </Menu>
           {published && album.slug && (
             <Button
-              component="a"
               href={`/albums/${album.slug}`}
               target="_blank"
               rel="noreferrer"
-              endIcon={<OpenInNew />}
+              endIcon={<OpenInNewIcon />}
               size="small"
             >
               View public page
@@ -177,7 +187,7 @@ function AdminAlbumPage() {
           >
             {published ? 'Unpublish' : 'Publish'}
           </Button>
-        </Box>
+        </div>
 
         <AlbumDetailsForm
           key={album.id}
@@ -189,21 +199,15 @@ function AdminAlbumPage() {
         />
 
         <section>
-          <Typography variant="h6" component="h2" gutterBottom>
+          <Text variant="h6" as="h2" gutterBottom>
             Photos ({album.photos.length})
-          </Typography>
+          </Text>
           {album.photos.length === 0 ? (
-            <Typography color="text.secondary">
+            <Text color="textSecondary">
               No photos yet. Use "Import from Google Photos" to add some.
-            </Typography>
+            </Text>
           ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 2,
-              }}
-            >
+            <div {...stylex.props(styles.grid)}>
               {album.photos.map((photo) => (
                 <PhotoTile
                   key={photo.id}
@@ -238,15 +242,15 @@ function AdminAlbumPage() {
                   }
                 />
               ))}
-            </Box>
+            </div>
           )}
         </section>
 
         {imports.length > 0 && (
           <section>
-            <Typography variant="h6" component="h2" gutterBottom>
+            <Text variant="h6" as="h2" gutterBottom>
               Recent imports
-            </Typography>
+            </Text>
             <AlbumImports imports={imports} />
           </section>
         )}
@@ -290,24 +294,18 @@ function AdminAlbumPage() {
         onClose={() => setGoogleOpen(false)}
       />
 
-      <Snackbar
+      <Toast
         open={Boolean(googleNotice)}
-        autoHideDuration={6000}
+        severity={google === 'connected' ? 'success' : 'warning'}
+        timeout={6000}
         onClose={() => setGoogleNotice(null)}
       >
-        <Alert
-          severity={google === 'connected' ? 'success' : 'warning'}
-          onClose={() => setGoogleNotice(null)}
-        >
-          {googleNotice}
-        </Alert>
-      </Snackbar>
+        {googleNotice}
+      </Toast>
 
-      <Snackbar open={Boolean(error)} onClose={clearError}>
-        <Alert severity="error" onClose={clearError}>
-          {error}
-        </Alert>
-      </Snackbar>
+      <Toast open={Boolean(error)} severity="error" onClose={clearError}>
+        {error}
+      </Toast>
     </Container>
   )
 }
@@ -341,21 +339,24 @@ function AlbumDetailsForm({
 
   return (
     <Paper
-      component="form"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSave(title.trim(), slug.trim())
-      }}
-      sx={{ p: 2 }}
+      xstyle={styles.form}
+      render={
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onSave(title.trim(), slug.trim())
+          }}
+        />
+      }
     >
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <div {...stylex.props(styles.fields)}>
         <TextField
           label="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
           size="small"
-          sx={{ flex: '2 1 240px' }}
+          xstyle={styles.titleField}
         />
         <TextField
           label="Slug"
@@ -363,23 +364,23 @@ function AlbumDetailsForm({
           onChange={(e) => setSlug(e.target.value)}
           required
           size="small"
+          xstyle={styles.slugField}
           error={Boolean(slugError)}
           helperText={
             slugError
               ? 'Lowercase letters, numbers and dashes'
               : 'Changing the slug changes the public URL and the storage path prefix for new uploads'
           }
-          sx={{ flex: '1 1 240px' }}
         />
         <Button
           type="submit"
           variant="contained"
           disabled={pending || !dirty || !title.trim() || !isValidSlug(slug)}
-          sx={{ alignSelf: 'flex-start' }}
+          xstyle={styles.save}
         >
           Save
         </Button>
-      </Box>
+      </div>
     </Paper>
   )
 }

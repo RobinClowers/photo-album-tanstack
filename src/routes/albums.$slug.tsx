@@ -1,7 +1,9 @@
-import { Container, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { getAlbumDetails } from '@/api/albums'
 import PhotoGrid from '@/components/PhotoGrid'
+import { Container, Text } from '@/components/ui'
+import { space } from '@/styles/tokens.stylex'
 import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/albums/$slug')({
@@ -26,20 +28,19 @@ export const Route = createFileRoute('/albums/$slug')({
   },
 })
 
+const styles = stylex.create({
+  page: { paddingTop: space.s4, paddingBottom: space.s4 },
+  title: { marginBottom: space.s4 },
+})
+
 function AlbumPage() {
   const { album } = Route.useLoaderData()
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography
-        variant="h3"
-        component="h1"
-        align="center"
-        gutterBottom
-        sx={{ mb: 4 }}
-      >
+    <Container maxWidth="xl" xstyle={styles.page}>
+      <Text variant="h3" as="h1" align="center" xstyle={styles.title}>
         {album.title}
-      </Typography>
+      </Text>
 
       <PhotoGrid photos={album.photos} albumSlug={album.slug || ''} />
     </Container>

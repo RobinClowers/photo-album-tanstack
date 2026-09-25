@@ -52,8 +52,11 @@ bun run cf-typegen   # Generate Cloudflare Workers types
 - **TanStack Router** - File-based routing with TypeScript support
 - **React 19.2.0** - Latest React with hooks and concurrent features
 - **TypeScript** - Strict configuration with ES2022 target
-- **MUI v7.3.7** - Primary UI component library with Pigment CSS
-- **Tailwind CSS v4** - Utility-first CSS for layouts
+- **StyleX** (`@stylexjs/stylex`, built by `@stylexjs/unplugin`) - all
+  styling; **Base UI** (`@base-ui/react`) - unstyled accessible primitives,
+  wrapped by the app's own components in `src/components/ui`
+- No MUI, Pigment CSS, Emotion or Tailwind: they were removed; do not add them
+  (or another CSS-in-JS / utility CSS library) back
 - **Cloudflare Workers** - Deployment target
 
 ### Project Structure
@@ -62,7 +65,8 @@ bun run cf-typegen   # Generate Cloudflare Workers types
 src/
 ├── routes/          # File-based routing (TanStack Router)
 ├── components/      # Reusable React components
-├── styles.css       # Global styles
+│   └── ui/          # StyleX + Base UI primitives (Button, Text, Dialog, ...)
+├── styles/          # app.css (global reset) and StyleX tokens (*.stylex.ts)
 └── api/            # Server functions and API endpoints
 ```
 
@@ -75,9 +79,9 @@ src/
 import { useState, useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-// 2. UI component imports (grouped by library)
-import { Container, Typography, Box, Card } from '@mui/material'
-import { Home, Menu } from '@mui/icons-material'
+// 2. Styling and UI components
+import * as stylex from '@stylexjs/stylex'
+import { Container, HomeIcon, Stack, Text } from '@/components/ui'
 
 // 3. Local imports
 import Header from '../components/Header'
@@ -166,28 +170,107 @@ const getAlbums = createServerFn({
 
 ### Styling Patterns
 
-#### MUI with Pigment CSS
+All UI is styled with StyleX and built on Base UI primitives, through the
+components in `src/components/ui`.
+
+#### StyleX
 
 ```typescript
-// Use sx prop for component-level styling
-<Card
-  sx={{
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    '&:hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: 4,
-    },
-  }}
->
+import * as stylex from '@stylexjs/stylex'
+import { breakpoints } from '@/styles/breakpoints.stylex'
+import { colors, elevation, space } from '@/styles/tokens.stylex'
+
+const styles = stylex.create({
+  card: {
+    padding: { default: space.s2, [breakpoints.smUp]: space.s3 },
+    boxShadow: elevation.e1,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: colors.divider,
+    transition: 'transform 0.2s',
+    // Pseudo-classes and media queries are conditions inside a property.
+    transform: { default: null, ':hover': 'translateY(-4px)' },
+  },
+})
+
+export function Card({ xstyle }: { xstyle?: stylex.StyleXStyles }) {
+  return <div {...stylex.props(styles.card, xstyle)} />
+}
 ```
 
-#### Tailwind for Layout
+- Tokens live in `src/styles/tokens.stylex.ts` (MUI default theme values:
+  palette, 8px `space` grid, `radii`, `elevation` shadows, type scale, motion,
+  z-index) and `src/styles/breakpoints.stylex.ts` (MUI xs/sm/md/lg/xl media
+  queries via `defineConsts`). Use them instead of literals. `.stylex.ts` files
+  may only export `defineVars` / `defineConsts`.
+- Always `import * as stylex from '@stylexjs/stylex'`; call `stylex.create` at
+  module top level. Accept an `xstyle?: stylex.StyleXStyles` prop for caller
+  overrides and pass it last to `stylex.props`.
+- **No border shorthands in `stylex.create`.** StyleX silently drops `border`,
+  `borderTop/Right/Bottom/Left`, `borderBlock*` and `borderInline*` (any value,
+  even `'none'` or `0`). Use longhands: `borderWidth`, `borderStyle`,
+  `borderColor`, `borderTopWidth`, ... The Biome plugin
+  `biome-plugins/no-stylex-border-shorthand.grit` enforces this in
+  `bun run check`. Multi-value `padding` / `margin` / `borderRadius` are fine.
+- Do not give a var override in `stylex.create` conditional values
+  (`[vars.x]: { default: ..., [breakpoints.smUp]: ... }`): with CSS layers
+  StyleX emits the default unlayered and the `@media` value inside a layer,
+  so the default always wins in builds (jsdom tests cannot see this). Put the
+  condition in `defineVars` instead (see `src/components/photoGrid.stylex.ts`).
+- Global base styles go in `src/styles/app.css` inside `@layer reset` (StyleX
+  layers are declared after it, via `stylexBuildOptions` in `vite/stylex.ts`).
+  Never add CSS outside a layer, and never add other global stylesheets:
+  unlayered CSS beats every StyleX rule. `src/styles/layers.test.ts` builds
+  app.css with the UI primitives and fails if `reset` is not declared first or
+  if any unlayered rule sets a regular property (StyleX's own unlayered
+  output, `defineVars` blocks, `@property` and `@keyframes`, only sets custom
+  properties). app.css is side-effect imported from `__root.tsx`; never link
+  it with `?url`, since StyleX appends its build output to it.
+- Fonts: Roboto (300/400/500/700) from Google Fonts, linked in `__root.tsx`.
+  Icons are inline SVG components (`*Icon` in `src/components/ui/Icon.tsx`,
+  Material icon paths); there is no icon font. Add a new icon there with
+  `createIcon(path, name)` rather than a dependency.
+- In dev, StyleX rules are served from `/virtual:stylex.css` and kept fresh by
+  `virtual:stylex:runtime` (both wired up in `__root.tsx`).
+- Tests: vitest compiles StyleX with runtime injection, so component tests can
+  assert `getComputedStyle(el)` for literal values; token references resolve to
+  `var(--...)` strings (`styleOf` in `src/components/ui/test-utils.tsx`
+  resolves them to the token's value). jsdom drops shorthands containing a
+  `var()` (e.g. `padding: var(--x)`), so assert longhands for those, and
+  StyleX minifies values (`'translate(14px,-9px) scale(.75)'`).
 
-```typescript
-// Use Tailwind for layout utilities
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-```
+#### UI primitives (`src/components/ui`)
+
+Build pages from these; import from `@/components/ui`. They mirror the MUI
+components (and MUI default theme) the app used before the migration, so
+props look familiar: `Button` (`variant`, `size`, `color`, `startIcon`, `href`),
+`IconButton`, `Text` (Typography: `variant`, `color`, `as`, `gutterBottom`),
+`Container`, `Stack` (`direction` / `gap` in 8px units, responsive objects
+like `{ xs: 'column', sm: 'row' }`), `Paper` / `Card` (+ `CardMedia`,
+`CardContent`, `CardActions`), `Alert`, `Chip`, `TextField`, `Table*`,
+`LinearProgress` / `CircularProgress`, `Dialog*`, `Menu` / `MenuItem`,
+`Tooltip`, `Toast`, `Avatar`, `Link` / `Anchor` and the `*Icon` set.
+`/admin/ui` renders every primitive and variant for manual testing.
+
+- Every primitive takes `xstyle` for layout overrides (margins, flex, width);
+  there is no `sx`. `className` is not supported: two `stylex.props` results
+  concatenated as class strings do not override each other predictably.
+- Router links: `<Link to="/albums/$slug" params={{ slug }}>` (type-safe,
+  MUI Link look); buttons and text render as links via
+  `render={<RouterLink to="/admin" />}` (TanStack's own `Link`, never the
+  styled ui `Link`, whose classes would clash) or `href="..."`.
+- Palette colors go through the `tone` vars (`tone.stylex.ts` / `tone.ts`):
+  apply `toneStyles[color]` first, then read `tone.main`, `tone.hover`, ...
+- Toasts need a `ToastProvider` above them; the admin layout
+  (`src/routes/admin.tsx`) mounts one for every `/admin` page.
+  `<Toast open={Boolean(error)} severity="error" onClose={clearError}>`
+  replaces the Snackbar + Alert pattern; `useToast().show({ message })` is the
+  imperative form. Unlike MUI's Snackbar it is not dismissed by clicking
+  elsewhere: it stays until its close button, its `timeout`, or `open`
+  turning false.
+- `src/styles/app.css` replicates MUI's old `CssBaseline` reset (border-box
+  sizing, body typography and colors) inside `@layer reset`, so StyleX
+  styles, including `boxSizing`, always win over it.
 
 ### Naming Conventions
 
@@ -293,7 +376,7 @@ function AlbumList() {
 - Use semantic HTML elements
 - Implement proper ARIA labels
 - Test with keyboard navigation
-- Use MUI's built-in accessibility features
+- Prefer Base UI primitives for interactive widgets (dialogs, menus, tooltips)
 
 ## Testing Guidelines
 
@@ -303,6 +386,17 @@ from the module's own exports, or the test proves nothing. Module-level
 constants derived from `import.meta.env` are captured at import time: to cover
 a different value, use `vi.stubEnv(...)` plus `vi.resetModules()` and a dynamic
 `await import('./module')` (see `src/utils/photo.test.ts`).
+
+Route pages are tested beside their route file (`src/routes/login.test.tsx`;
+`vite.config.ts` sets `routeFileIgnorePattern` so the router generator skips
+`*.test.tsx`). `renderRoute(Route, { id, path, url, loaderData })` from
+`src/test/renderRoute.tsx` mounts the page with a stub loader, using the same
+`id` / `path` as `routeTree.gen.ts` (for nested routes, the full path, e.g.
+`/admin/imports/$id`); `vi.mock` the route's `@/api/*` imports, since server
+functions cannot load under Vitest. Pass `wrapper: ToastProvider` for pages
+that show toasts and `context` to stand in for a `beforeLoad` result (e.g.
+the admin layout's `{ user }`). `src/test/adminFixtures.ts` builds minimal
+admin loader rows.
 
 ```typescript
 import { render, screen } from '@testing-library/react'
@@ -413,7 +507,8 @@ const mutation = useMutation({
 - Development server on port 3000
 - Hot module replacement
 - TypeScript with path aliases
-- Pigment CSS integration
+- StyleX via `@stylexjs/unplugin` (`stylexBuildOptions` in `vite/stylex.ts`;
+  `vitest.config.ts` reuses its aliases but injects rules at runtime, unlayered)
 - Cloudflare Workers environment
 
 This document serves as the primary reference for maintaining code consistency and leveraging the TanStack ecosystem effectively.

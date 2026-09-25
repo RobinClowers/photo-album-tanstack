@@ -1,7 +1,8 @@
-import { Box, Card, CardMedia, Container, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute, Link } from '@tanstack/react-router'
-
 import { getAllAlbums } from '@/api/albums'
+import { Card, CardMedia, Container, Text } from '@/components/ui'
+import { elevation, space } from '@/styles/tokens.stylex'
 import { publicPageHeaders } from '@/utils/cacheControl'
 
 export const Route = createFileRoute('/')({
@@ -10,19 +11,32 @@ export const Route = createFileRoute('/')({
   loader: async () => ({ albums: await getAllAlbums() }),
 })
 
+const styles = stylex.create({
+  page: { paddingTop: space.s4, paddingBottom: space.s4 },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, 240px)',
+    justifyContent: 'center',
+    gap: space.s3,
+  },
+  link: { textDecoration: 'none' },
+  card: {
+    cursor: 'pointer',
+    transitionProperty: 'transform, box-shadow',
+    transitionDuration: '0.2s',
+    transitionTimingFunction: 'ease',
+    transform: { default: null, ':hover': 'translateY(-4px)' },
+    boxShadow: { default: elevation.e1, ':hover': elevation.e4 },
+  },
+  title: { marginTop: space.s1, marginBottom: space.s1, fontWeight: 400 },
+})
+
 function IndexPage() {
   const { albums } = Route.useLoaderData()
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, 240px)',
-          justifyContent: 'center',
-          gap: 3,
-        }}
-      >
+    <Container maxWidth="lg" xstyle={styles.page}>
+      <div {...stylex.props(styles.grid)}>
         {albums.map((album) => (
           <Link
             to="/albums/$slug"
@@ -30,42 +44,26 @@ function IndexPage() {
               slug: album.slug,
             }}
             key={album.id}
-            style={{ textDecoration: 'none' }}
+            {...stylex.props(styles.link)}
           >
-            <Card
-              sx={{
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
-                },
-              }}
-            >
+            <Card xstyle={styles.card}>
               {album.cover_photo && (
                 <CardMedia
-                  component="img"
                   height="180"
                   width="240"
-                  image={album.cover_photo.src}
+                  src={album.cover_photo.src}
                   srcSet={album.cover_photo.srcSet}
                   sizes="240px"
                   alt={album.title}
-                  sx={{ objectFit: 'cover' }}
                 />
               )}
-              <Typography
-                variant="h6"
-                component="h2"
-                sx={{ my: 1, fontWeight: 400 }}
-                align="center"
-              >
+              <Text variant="h6" as="h2" align="center" xstyle={styles.title}>
                 {album.title}
-              </Typography>
+              </Text>
             </Card>
           </Link>
         ))}
-      </Box>
+      </div>
     </Container>
   )
 }

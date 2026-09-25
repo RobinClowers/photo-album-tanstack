@@ -49,5 +49,6 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "plugins": ["./biome-plugins/no-stylex-border-shorthand.grit"]
 }

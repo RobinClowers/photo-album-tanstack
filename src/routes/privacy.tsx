@@ -1,5 +1,7 @@
-import { Container, Link as MuiLink, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { createFileRoute } from '@tanstack/react-router'
+import { Anchor, Container, Text } from '@/components/ui'
+import { space } from '@/styles/tokens.stylex'
 import { publicPageHeaders } from '@/utils/cacheControl'
 
 const CONTACT_EMAIL = 'robin@poggiolabs.com'
@@ -19,43 +21,49 @@ export const Route = createFileRoute('/privacy')({
   }),
 })
 
+const styles = stylex.create({
+  page: { paddingTop: space.s4, paddingBottom: space.s4 },
+  intro: { marginTop: space.s2 },
+  section: { marginTop: space.s3 },
+})
+
 function PrivacyPage() {
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Container maxWidth="md" xstyle={styles.page}>
+      <Text variant="h4" as="h1" gutterBottom>
         Privacy policy
-      </Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
+      </Text>
+      <Text variant="body2" color="textSecondary" gutterBottom>
         Last updated {LAST_UPDATED}
-      </Typography>
+      </Text>
 
-      <Typography variant="body1" paragraph sx={{ mt: 2 }}>
+      <Text variant="body1" paragraph xstyle={styles.intro}>
         Robinʼs Photos is a personal photo album site. Visitors can browse
         published albums without signing in, and no account is required to view
         anything on the site.
-      </Typography>
+      </Text>
 
-      <Typography variant="h6" component="h2" gutterBottom sx={{ mt: 3 }}>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Visitors
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         The site does not use advertising, tracking cookies, or third-party
         analytics. The hosting provider (Cloudflare) records standard server
         logs, such as IP address, browser type, and pages requested, for
         operating and securing the service. Images are served from Amazon S3,
         which records similar access logs.
-      </Typography>
+      </Text>
 
-      <Typography variant="h6" component="h2" gutterBottom sx={{ mt: 3 }}>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Administrator sign-in with Google
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         Only the site administrator signs in, using Google. When signing in, the
         site receives the Google account email address and uses it to confirm
         the person is the administrator. A session cookie keeps the
         administrator signed in.
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         To import photos, the administrator grants the site access to the Google
         Photos Picker. This lets the site download only the photos the
         administrator explicitly selects in the Google Photos picker. The site
@@ -63,39 +71,39 @@ function PrivacyPage() {
         Google access token is stored encrypted, is used solely to download the
         selected photos, and can be revoked at any time from the Google account
         permissions page.
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         Photos imported this way, along with their metadata such as filename,
         capture date, and camera settings, are stored on Amazon S3 and in the
         siteʼs database so they can be published in albums on this site.
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         The siteʼs use of information received from Google APIs adheres to the{' '}
-        <MuiLink
+        <Anchor
           href="https://developers.google.com/terms/api-services-user-data-policy"
           target="_blank"
           rel="noreferrer"
         >
           Google API Services User Data Policy
-        </MuiLink>
+        </Anchor>
         , including the Limited Use requirements.
-      </Typography>
+      </Text>
 
-      <Typography variant="h6" component="h2" gutterBottom sx={{ mt: 3 }}>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Sharing
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         No personal information is sold or shared with third parties, other than
         the infrastructure providers named above that host the site.
-      </Typography>
+      </Text>
 
-      <Typography variant="h6" component="h2" gutterBottom sx={{ mt: 3 }}>
+      <Text variant="h6" as="h2" gutterBottom xstyle={styles.section}>
         Contact
-      </Typography>
-      <Typography variant="body1" paragraph>
+      </Text>
+      <Text variant="body1" paragraph>
         Questions about this policy can be sent to{' '}
-        <MuiLink href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</MuiLink>.
-      </Typography>
+        <Anchor href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Anchor>.
+      </Text>
     </Container>
   )
 }

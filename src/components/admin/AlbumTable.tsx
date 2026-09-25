@@ -1,19 +1,20 @@
-import { OpenInNew } from '@mui/icons-material'
+import * as stylex from '@stylexjs/stylex'
 import {
   Avatar,
   Button,
   IconButton,
-  Paper,
+  Link,
+  OpenInNewIcon,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
-} from '@mui/material'
-import { Link } from '@tanstack/react-router'
+  Text,
+} from '@/components/ui'
 import type { AdminAlbumRow } from '@/db/admin'
+import { font, space } from '@/styles/tokens.stylex'
 import { buildPhotoPath } from '@/utils/photo'
 
 /**
@@ -24,6 +25,13 @@ import { buildPhotoPath } from '@/utils/photo'
 function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : ''
 }
+
+const styles = stylex.create({
+  empty: { padding: space.s2 },
+  title: { fontWeight: font.weightMedium },
+  actions: { whiteSpace: 'nowrap' },
+  publish: { marginLeft: space.s1 },
+})
 
 export function AlbumTable({
   albums,
@@ -36,13 +44,13 @@ export function AlbumTable({
 }) {
   if (albums.length === 0) {
     return (
-      <Typography color="text.secondary" sx={{ p: 2 }}>
+      <Text color="textSecondary" xstyle={styles.empty}>
         None.
-      </Typography>
+      </Text>
     )
   }
   return (
-    <TableContainer component={Paper}>
+    <TableContainer paper="elevation">
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -57,6 +65,7 @@ export function AlbumTable({
         <TableBody>
           {albums.map((album) => {
             const published = Boolean(album.publishedAt)
+            const needsCover = !published && !album.coverPhotoId
             return (
               <TableRow key={album.id} hover>
                 <TableCell padding="checkbox">
@@ -64,49 +73,49 @@ export function AlbumTable({
                     variant="rounded"
                     src={buildPhotoPath(album.cover_photo, 'mobile_sm')}
                     alt=""
-                    sx={{ width: 40, height: 40 }}
                   />
                 </TableCell>
                 <TableCell>
                   <Link
                     to="/admin/albums/$id"
                     params={{ id: String(album.id) }}
-                    style={{ color: 'inherit', fontWeight: 500 }}
+                    color="inherit"
+                    xstyle={styles.title}
                   >
                     {album.title || '(untitled)'}
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary">
+                  <Text variant="body2" color="textSecondary">
                     {album.slug}
-                  </Typography>
+                  </Text>
                 </TableCell>
                 <TableCell align="right">{album.photoCount}</TableCell>
                 <TableCell>{formatDate(album.firstPhotoTakenAt)}</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                <TableCell align="right" xstyle={styles.actions}>
                   {published && album.slug && (
                     <IconButton
-                      component="a"
                       href={`/albums/${album.slug}`}
                       target="_blank"
                       rel="noreferrer"
                       size="small"
                       title="View public page"
+                      aria-label="View public page"
                     >
-                      <OpenInNew fontSize="small" />
+                      <OpenInNewIcon fontSize="small" />
                     </IconButton>
                   )}
                   <Button
                     size="small"
                     variant={published ? 'outlined' : 'contained'}
-                    disabled={pending || (!published && !album.coverPhotoId)}
+                    disabled={pending || needsCover}
                     title={
-                      !published && !album.coverPhotoId
+                      needsCover
                         ? 'Choose a cover photo before publishing'
                         : undefined
                     }
                     onClick={() => onTogglePublished(album)}
-                    sx={{ ml: 1 }}
+                    xstyle={styles.publish}
                   >
                     {published ? 'Unpublish' : 'Publish'}
                   </Button>

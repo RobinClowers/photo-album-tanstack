@@ -1,7 +1,10 @@
-import { Box, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { Text } from '@/components/ui'
+import { colors, radii, space } from '@/styles/tokens.stylex'
 import type { GridPhoto } from '@/utils/publicPhoto'
+import { photoGrid } from './photoGrid.stylex'
 
 interface PhotoGridItemProps {
   photo: GridPhoto
@@ -13,11 +16,54 @@ interface PhotoGridItemProps {
   priority?: boolean
 }
 
-// Keep in sync with --row-height in PhotoGrid. Tiles grow somewhat past their
-// basis to fill a row, so the srcset hint allows for that.
+// Keep in sync with photoGrid.rowHeight in PhotoGrid. Tiles grow somewhat
+// past their basis to fill a row, so the srcset hint allows for that.
 const ROW_HEIGHT_MOBILE = 200
 const ROW_HEIGHT = 320
 const ROW_GROWTH = 1.25
+
+const styles = stylex.create({
+  tile: {
+    position: 'relative',
+    flexShrink: 1,
+    minWidth: 0,
+    // A row that wraps early (typically before a panorama) stretches its
+    // few tiles across the full width; cap the height and let the image
+    // crop rather than rendering one enormous tile.
+    maxHeight: `calc(${photoGrid.rowHeight} * 1.5)`,
+    overflow: 'hidden',
+    borderRadius: radii.sm,
+    // Placeholder while the photo loads.
+    backgroundColor: colors.grey200,
+  },
+  // Per-photo sizing: grow in proportion to width, basis = width at the
+  // target row height.
+  aspect: (aspectRatio: number) => ({
+    flexGrow: aspectRatio,
+    flexBasis: `calc(${photoGrid.rowHeight} * ${aspectRatio})`,
+    aspectRatio,
+  }),
+  link: { display: 'block', width: '100%', height: '100%' },
+  image: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    verticalAlign: 'bottom',
+    transitionProperty: 'opacity',
+    transitionDuration: '0.3s',
+    transitionTimingFunction: 'ease-in',
+  },
+  loading: { opacity: 0 },
+  caption: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: colors.white,
+    padding: space.s1,
+  },
+})
 
 export default function PhotoGridItem({
   photo,
@@ -37,32 +83,13 @@ export default function PhotoGridItem({
   const desktopWidth = Math.round(aspectRatio * ROW_HEIGHT * ROW_GROWTH)
 
   return (
-    <Box
-      // Pigment extracts sx at build time, so the per-photo value is passed
-      // as a CSS variable rather than interpolated into the sx styles.
-      style={{ '--aspect-ratio': aspectRatio } as React.CSSProperties}
-      sx={{
-        position: 'relative',
-        flex: 'var(--aspect-ratio) 1 calc(var(--row-height) * var(--aspect-ratio))',
-        minWidth: 0,
-        aspectRatio: 'var(--aspect-ratio)',
-        // A row that wraps early (typically before a panorama) stretches its
-        // few tiles across the full width; cap the height and let the image
-        // crop rather than rendering one enormous tile.
-        maxHeight: 'calc(var(--row-height) * 1.5)',
-        overflow: 'hidden',
-        borderRadius: 1,
-        // Placeholder while the photo loads.
-        bgcolor: 'grey.200',
-      }}
-    >
+    <div {...stylex.props(styles.tile, styles.aspect(aspectRatio))}>
       <Link
         to="/albums/$slug/$filename"
         params={{ slug: albumSlug, filename: photo.filename }}
-        style={{ display: 'block', width: '100%', height: '100%' }}
+        {...stylex.props(styles.link)}
       >
-        <Box
-          component="img"
+        <img
           ref={imgRef}
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
@@ -73,33 +100,16 @@ export default function PhotoGridItem({
           srcSet={photo.srcSet}
           sizes={`(max-width: 599px) min(100vw, ${mobileWidth}px), ${desktopWidth}px`}
           alt={photo.caption || ''}
-          sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            verticalAlign: 'bottom',
-            transition: 'opacity 0.3s ease-in',
-            '&[data-loaded="false"]': { opacity: 0 },
-          }}
+          {...stylex.props(styles.image, !loaded && styles.loading)}
         />
         {photo.caption && (
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              color: 'white',
-              padding: 1,
-            }}
-          >
-            <Typography variant="caption" noWrap component="div">
+          <div {...stylex.props(styles.caption)}>
+            <Text variant="caption" noWrap as="div">
               {photo.caption}
-            </Typography>
-          </Box>
+            </Text>
+          </div>
         )}
       </Link>
-    </Box>
+    </div>
   )
 }

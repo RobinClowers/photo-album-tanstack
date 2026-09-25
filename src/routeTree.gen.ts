@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as DevImagesSplatRouteImport } from './routes/dev-images.$'
 import { Route as AlbumsSlugRouteImport } from './routes/albums.$slug'
+import { Route as AdminUiRouteImport } from './routes/admin.ui'
 import { Route as AdminImportsIndexRouteImport } from './routes/admin.imports.index'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as AlbumsSlugFilenameRouteImport } from './routes/albums.$slug_.$filename'
@@ -59,6 +60,11 @@ const AlbumsSlugRoute = AlbumsSlugRouteImport.update({
   id: '/albums/$slug',
   path: '/albums/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUiRoute = AdminUiRouteImport.update({
+  id: '/ui',
+  path: '/ui',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminImportsIndexRoute = AdminImportsIndexRouteImport.update({
   id: '/imports/',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/admin/ui': typeof AdminUiRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/dev-images/$': typeof DevImagesSplatRoute
   '/admin/': typeof AdminIndexRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/admin/ui': typeof AdminUiRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/dev-images/$': typeof DevImagesSplatRoute
   '/admin': typeof AdminIndexRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/admin/ui': typeof AdminUiRoute
   '/albums/$slug': typeof AlbumsSlugRoute
   '/dev-images/$': typeof DevImagesSplatRoute
   '/admin/': typeof AdminIndexRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/privacy'
+    | '/admin/ui'
     | '/albums/$slug'
     | '/dev-images/$'
     | '/admin/'
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/privacy'
+    | '/admin/ui'
     | '/albums/$slug'
     | '/dev-images/$'
     | '/admin'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/privacy'
+    | '/admin/ui'
     | '/albums/$slug'
     | '/dev-images/$'
     | '/admin/'
@@ -270,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlbumsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/ui': {
+      id: '/admin/ui'
+      path: '/ui'
+      fullPath: '/admin/ui'
+      preLoaderRoute: typeof AdminUiRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/imports/': {
       id: '/admin/imports/'
       path: '/imports'
@@ -330,6 +349,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminUiRoute: typeof AdminUiRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAlbumsIdRoute: typeof AdminAlbumsIdRoute
   AdminImportsIdRoute: typeof AdminImportsIdRoute
@@ -337,6 +357,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminUiRoute: AdminUiRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminAlbumsIdRoute: AdminAlbumsIdRoute,
   AdminImportsIdRoute: AdminImportsIdRoute,

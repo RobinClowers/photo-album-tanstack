@@ -1,9 +1,18 @@
-import { Box, Button, Paper, TextField, Typography } from '@mui/material'
+import * as stylex from '@stylexjs/stylex'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { adminCreateAlbum } from '@/api/admin-albums'
+import { Button, Paper, Text, TextField } from '@/components/ui'
+import { space } from '@/styles/tokens.stylex'
 import { isValidSlug, slugify } from '@/utils/slug'
 import { useAdminAction } from './useAdminAction'
+
+const styles = stylex.create({
+  paper: { padding: space.s2 },
+  fields: { display: 'flex', gap: space.s2, flexWrap: 'wrap' },
+  field: { flex: '1 1 240px' },
+  submit: { alignSelf: 'flex-start' },
+})
 
 export function NewAlbumForm() {
   const navigate = useNavigate()
@@ -30,18 +39,18 @@ export function NewAlbumForm() {
   const slugError = slug && !isValidSlug(slug)
 
   return (
-    <Paper component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-      <Typography variant="h6" component="h2" gutterBottom>
+    <Paper render={<form onSubmit={handleSubmit} />} xstyle={styles.paper}>
+      <Text variant="h6" as="h2" gutterBottom>
         New album
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      </Text>
+      <div {...stylex.props(styles.fields)}>
         <TextField
           label="Title"
           value={title}
           onChange={(e) => handleTitle(e.target.value)}
           required
           size="small"
-          sx={{ flex: '1 1 240px' }}
+          xstyle={styles.field}
         />
         <TextField
           label="Slug"
@@ -54,21 +63,21 @@ export function NewAlbumForm() {
           size="small"
           error={Boolean(slugError)}
           helperText={slugError ? 'Lowercase letters, numbers and dashes' : ' '}
-          sx={{ flex: '1 1 240px' }}
+          xstyle={styles.field}
         />
         <Button
           type="submit"
           variant="contained"
           disabled={pending || !title.trim() || !isValidSlug(slug)}
-          sx={{ alignSelf: 'flex-start' }}
+          xstyle={styles.submit}
         >
           Create
         </Button>
-      </Box>
+      </div>
       {error && (
-        <Typography color="error" variant="body2">
+        <Text color="error" variant="body2" role="alert">
           {error}
-        </Typography>
+        </Text>
       )}
     </Paper>
   )
