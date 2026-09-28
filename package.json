@@ -2,31 +2,34 @@
   "name": "photo-album-tanstack",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "serve": "vite preview",
     "test": "vitest run --passWithNoTests",
-    "deploy": "CLOUDFLARE_ENV= bun run build && CLOUDFLARE_ENV= wrangler deploy",
-    "deploy:staging": "bun run build --mode staging && wrangler deploy",
+    "deploy": "bun run build && cf deploy --prebuilt",
+    "deploy:staging": "bun run build --mode staging && cf deploy --prebuilt",
     "preview": "bun run build && vite preview",
-    "cf-typegen": "wrangler types",
+    "cf-typegen": "cf workers types",
     "db": "bun scripts/d1.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply photo_album --remote",
-    "db:migrate:staging": "wrangler d1 migrations apply photo_album --env staging --remote",
-    "db:local": "wrangler d1 migrations apply photo_album --local",
+    "db:migrate": "bun scripts/d1.ts prod --migrate",
+    "db:migrate:staging": "bun scripts/d1.ts staging --migrate",
+    "db:local": "bun scripts/d1.ts local --migrate",
     "db:studio": "drizzle-kit studio",
     "format": "biome format --write .",
     "lint": "biome lint .",
     "lint:fix": "biome check --write .",
     "check": "biome check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "cf workers types && tsc --noEmit",
     "prepare": "lefthook install"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@cloudflare/vite-plugin": "^1.54.8",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-ad79608dd",
     "@stylexjs/stylex": "^0.19.1",
     "@tanstack/react-devtools": "^0.10.2",
     "@tanstack/react-router": "^1.169.1",
@@ -52,12 +55,12 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "cf": "1.0.0-beta.5",
     "jsdom": "^27.0.0",
     "lefthook": "^2.1.12",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
-    "web-vitals": "^5.1.0",
-    "wrangler": "^4.131.1"
+    "web-vitals": "^5.1.0"
   }
 }

@@ -16,7 +16,8 @@ concurrency:
 env:
   CI: 'true'
   LEFTHOOK: '0'
-  WRANGLER_SEND_METRICS: 'false'
+  CF_SEND_TELEMETRY: 'false'
+  CF_QUIET: '1'
 
 jobs:
   checks:
@@ -30,6 +31,11 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.4.2'
+      # cf, vite and cloudflare.config.ts run under Node (type stripping
+      # needs 22.18+), not Bun.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
       - run: bun install --frozen-lockfile
       - run: bun run test
       - run: bun run typecheck
@@ -47,11 +53,14 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.4.2'
+      # cf, vite and cloudflare.config.ts run under Node (type stripping
+      # needs 22.18+), not Bun.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
       - run: bun install --frozen-lockfile
       - name: Build staging
         run: bun run build --mode staging
-        env:
-          CLOUDFLARE_ENV: staging
       - name: Migrate and deploy staging
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -59,8 +68,8 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID secret'; exit 1; }
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN secret'; exit 1; }
-          bun run wrangler d1 migrations apply photo_album --remote --config wrangler.jsonc --env staging
-          bun run wrangler deploy
+          bun run db:migrate:staging
+          bun run cf deploy --prebuilt
 
   production:
     name: Deploy production
@@ -75,18 +84,20 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.4.2'
+      # cf, vite and cloudflare.config.ts run under Node (type stripping
+      # needs 22.18+), not Bun.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
       - run: bun install --frozen-lockfile
       - name: Build production
         run: bun run build
-        env:
-          CLOUDFLARE_ENV: ''
       - name: Migrate and deploy production
         env:
-          CLOUDFLARE_ENV: ''
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID secret'; exit 1; }
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN secret'; exit 1; }
-          bun run wrangler d1 migrations apply photo_album --remote --config wrangler.jsonc --env ""
-          bun run wrangler deploy
+          bun run db:migrate
+          bun run cf deploy --prebuilt

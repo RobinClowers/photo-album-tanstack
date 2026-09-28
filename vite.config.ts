@@ -11,7 +11,13 @@ const config = defineConfig({
   plugins: [
     stylex.vite({ ...stylexBuildOptions, devPersistToDisk: true }),
     devtools(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    // Worker config comes from cloudflare.config.ts, evaluated with Vite's
+    // --mode. Local bindings persist in .wrangler/state (the plugin's own
+    // default is now .cloudflare/state), which `bun run db local` reads too.
+    cloudflare({
+      viteEnvironment: { name: 'ssr' },
+      persistState: { path: '.wrangler/state' },
+    }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],

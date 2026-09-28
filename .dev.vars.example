@@ -1,5 +1,7 @@
 # Local secrets for `bun run dev`. Copy to .dev.vars (gitignored).
-# Deployed environments get these via `wrangler secret put NAME [--env staging]`.
+# Deployed Workers get these via
+# `bun run cf workers secrets update NAME --worker photo-album-tanstack[-staging] --type secret_text`
+# (cf prompts for the value when --text is omitted, keeping it out of shell history).
 
 # Google OAuth web client (Google Cloud console > Google Auth Platform > Clients)
 GOOGLE_CLIENT_ID=

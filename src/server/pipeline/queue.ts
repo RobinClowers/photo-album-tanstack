@@ -43,7 +43,7 @@ export function pipelineDeps(workerEnv: Env): PipelineDeps {
   }
 }
 
-/** Queue consumer entry point (batch size is 1 in wrangler.jsonc). */
+/** Queue consumer entry point (batch size is 1 in cloudflare.config.ts). */
 export async function handlePhotoQueue(
   batch: MessageBatch<PhotoQueueMessage>,
   workerEnv: Env = env,

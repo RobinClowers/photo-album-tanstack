@@ -13,7 +13,8 @@ of the variants `mobile_sm`, `mobile_lg`, `tablet`, `laptop`, `desktop`.
 - TanStack Start + Router (file-based routes in `src/routes`)
 - React 19, StyleX for styling, Base UI for accessible primitives
 - Drizzle ORM over Cloudflare D1 (`src/db`)
-- Cloudflare Workers via `@cloudflare/vite-plugin` and wrangler
+- Cloudflare Workers via `@cloudflare/vite-plugin` (beta) and the `cf` CLI,
+  configured in `cloudflare.config.ts`
 - Biome for lint/format, Vitest for tests, lefthook for pre-commit hooks
 
 Conventions for contributors and agents live in [AGENTS.md](./AGENTS.md).
@@ -26,7 +27,7 @@ bun run db:local     # create the local D1 schema in .wrangler/state (first run)
 bun run dev          # http://localhost:3000, workerd + the local D1 in .wrangler/state
 bun run test         # vitest
 bun run check        # biome lint + format check
-bun run typecheck    # tsc --noEmit
+bun run typecheck    # cf workers types, then tsc --noEmit
 ```
 
 `.wrangler/state` is gitignored and machine-local: a fresh clone has no local
@@ -40,20 +41,23 @@ bun run db local --write --file tmp/staging-content.sql
 
 Configuration lives in three places:
 
-- **Runtime `vars`** — non-secret values in `wrangler.jsonc`, mirrored under
-  `env.staging` because named environments do not inherit them. Read from the
-  Worker's `Env` binding (`ADMIN_EMAILS`). `.dev.vars` may override a var
-  locally, but only keys that are declared as a var or a required secret
-  reach the Worker.
+- **Runtime vars** — non-secret `bindings.text(...)` entries in
+  `cloudflare.config.ts`, declared once in `workerConfig` for both modes. Read
+  from the Worker's `Env` binding (`ADMIN_EMAILS`).
 - **Build-time `VITE_*`** — in `.env`, `.env.staging`, etc., inlined at build
   time and read via `import.meta.env` (e.g. `VITE_PHOTO_BASE_URL`).
 - **Secrets** — `.dev.vars` locally (gitignored; copy `.dev.vars.example`) and
-  `wrangler secret put NAME [--env staging]` per deployed environment. They are
-  also listed under `secrets.required` in `wrangler.jsonc` so `wrangler types`
-  is deterministic regardless of what is in your `.dev.vars`.
+  per deployed Worker:
+  `bun run cf workers secrets update NAME --worker photo-album-tanstack[-staging] --type secret_text`
+  (it prompts for the value when `--text` is omitted, which keeps the value
+  out of shell history). They are declared
+  as `bindings.secret()` in `cloudflare.config.ts`, which is what the
+  generated `Env` type follows, regardless of what is in your `.dev.vars`.
 
 Drizzle's remote commands (`bun run db:studio`) need Cloudflare API credentials
-in a `.env` file — copy `.env.example` to `.env` and fill it in.
+in a `.env` file — copy `.env.example` to `.env` and fill it in. Bun loads
+`.env` into every script, cf included, so a real `CLOUDFLARE_ACCOUNT_ID` there
+selects cf's account too (the `db` script ignores the example's placeholder).
 `bun run db:generate` works offline without it.
 
 ## Storage
@@ -68,13 +72,14 @@ layout shared by the public URL builders and the storage code.
 The Worker reads and writes through the `PHOTOS` bucket binding.
 `src/server/storage.ts` wraps it in a small put / head / get / list / delete
 API so the rest of the code stays storage-agnostic. There are no storage
-credentials to manage: the binding is configured in `wrangler.jsonc`, and
-local dev gets an emulated bucket under `.wrangler/state`. To put a real
+credentials to manage: the binding is configured in `cloudflare.config.ts`,
+and local dev gets an emulated bucket under `.wrangler/state`. To put a real
 object into the local bucket, for example an album's originals for a
 reprocess test:
 
 ```bash
-bun run wrangler r2 object put robin-photos/<slug>/original/<file>.jpg --file <file>.jpg --local
+bun run cf r2 objects put <slug>/original/<file>.jpg --bucket-name robin-photos \
+  --file <file>.jpg --content-type image/jpeg --local --persist-to .wrangler/state
 ```
 
 In `bun run dev`, `.env.development` points `VITE_PHOTO_BASE_URL` at
@@ -152,10 +157,10 @@ URI (the connection flow reuses `/api/auth/google/callback`).
 Deployed environments need the queues to exist before the first deploy:
 
 ```bash
-bun run wrangler queues create photo-album-photos
-bun run wrangler queues create photo-album-photos-dlq
-bun run wrangler queues create photo-album-photos-staging
-bun run wrangler queues create photo-album-photos-staging-dlq
+bun run cf queues create --queue-name photo-album-photos
+bun run cf queues create --queue-name photo-album-photos-dlq
+bun run cf queues create --queue-name photo-album-photos-staging
+bun run cf queues create --queue-name photo-album-photos-staging-dlq
 ```
 
 ## Environments
@@ -165,17 +170,19 @@ bun run wrangler queues create photo-album-photos-staging-dlq
 | Worker | `photo-album-tanstack` at photos.robinclowers.com | `photo-album-tanstack-staging` on workers.dev |
 | D1 | `photo-album` | `photo-album-staging` (seeded from a production content-table export, no user data) |
 | Deploy | `bun run deploy` | `bun run deploy:staging` |
-| Secrets | `wrangler secret put NAME` | `wrangler secret put NAME --env staging` |
+| Mode | default (no `--mode`) | `--mode staging` |
 
-Named environments do not inherit bindings, so any new binding, var, or
-`secrets.required` entry added to the top level of `wrangler.jsonc` must also be
-added under `env.staging`. Routes *are* inherited, which is why `env.staging`
-sets `"routes": []`.
+`cloudflare.config.ts` switches on `ctx.mode` (Vite's `--mode`). Both
+modes are built by one `workerConfig(resources)` function, so a new binding,
+var, or secret is added once; only resource names (`RESOURCES`) differ.
+Production alone adds the custom domain, and staging alone sets `workersDev`.
+Database ids live in `config/d1.ts`, shared with the `db` script.
 
 ## Database
 
 The schema is in `src/db/schema.ts`; migrations are generated by drizzle-kit
-into `drizzle/` and applied with wrangler.
+into `drizzle/` and applied with `cf d1 migrations apply --dir drizzle` (through
+the `db` script, which supplies the database id).
 
 ```bash
 bun run db:generate            # create a migration from schema changes (no credentials needed)
@@ -186,7 +193,7 @@ bun run db:migrate             # apply to production
 
 ### Running SQL by hand
 
-Always go through the `db` script, never a raw `wrangler d1 execute`:
+Always go through the `db` script, never a raw `cf d1 raw` / `cf d1 query`:
 
 ```bash
 bun run db local   "select count(*) from albums"
@@ -196,26 +203,29 @@ bun run db staging --write "delete from photos where album_id = 5"
 bun run db staging --write --file tmp/fixup.sql
 ```
 
-The environment is the first argument and has no default. Every environment
-binds its database as `photo_album`, and the script passes that binding name
-plus `--env`, the same way deploys choose their environment, so a database
-*name* never has to be typed. Wrangler's `d1 execute` otherwise accepts either
-a database name or a binding, and the production database's name is the bare
-project name `photo-album`, which is how a staging cleanup was once run
-against production. Wrangler prints the database it resolved, with its id,
-before running; the script refuses statements that write unless you pass
-`--write`, and pauses five seconds before a production write.
+The environment is the first argument and has no default. `cf d1` commands
+only accept a database id, so the script looks it up in `config/d1.ts` (the
+same table `cloudflare.config.ts` binds) and prints the name and id before
+running; neither is ever typed by hand. (Under wrangler, `d1 execute` accepted
+a bare database name, and the production database's name is the project name
+`photo-album`, which is how a staging cleanup was once run against
+production.) The script refuses statements that write unless you pass
+`--write`, and pauses five seconds before a production write or migration.
+`local` uses `cf --local --persist-to .wrangler/state`; without
+`--persist-to`, cf would read its own empty state in
+`~/.config/cloudflare/state`. Locally only the last statement's rows are
+printed.
 
 If something does go wrong on a remote database, D1 Time Travel keeps thirty
-days of history: `bun run wrangler d1 time-travel restore photo-album
---timestamp <RFC 3339 just before the mistake>` (the `photo-album-staging`
-name for staging) rolls the whole database back, and prints the bookmark to
-undo the restore itself.
+days of history: `bun run cf d1 time-travel restore <database id>
+--timestamp <ISO 8601 just before the mistake>` (ids in `config/d1.ts`) rolls
+the whole database back, and prints the bookmark to undo the restore itself.
 
 When a database is seeded from a SQL dump rather than by running migration
-`0000`, Wrangler initially has no record of it. Before the first
+`0000`, the migrations table initially has no record of it. Before the first
 `migrations apply` against such a database, record the baseline once so
-Wrangler does not try to re-create the tables:
+the tables are not re-created (cf uses the same `d1_migrations` table and
+file names as wrangler did):
 
 ```sql
 CREATE TABLE IF NOT EXISTS d1_migrations(
@@ -240,8 +250,10 @@ OAuth tokens) must never be copied into staging, whose Worker is publicly
 reachable on workers.dev.
 
 ```bash
+# cf d1 export is the raw polling API (it returns a download URL), so this
+# one step still uses wrangler's client-side export, run ad hoc via bunx.
 mkdir -p tmp    # tmp/ is gitignored and wrangler will not create it
-bun run wrangler d1 export photo-album --remote \
+bunx wrangler@4 d1 export photo-album --remote \
   --table albums --table photos --table photo_versions \
   --table redirects --table comments --table plus_ones \
   --output tmp/staging-content.sql
@@ -287,28 +299,25 @@ original Postgres dump into D1 and is kept for reference.
 ## Deploying
 
 ```bash
-bun run deploy:staging   # build with --mode staging, then wrangler deploy
-bun run deploy           # production build, then wrangler deploy
+bun run deploy:staging   # vite build --mode staging, then cf deploy --prebuilt
+bun run deploy           # production build, then cf deploy --prebuilt
 ```
 
 The target environment is chosen **at build time**, not at deploy time.
-`bun run build --mode staging` loads `.env.staging`, whose `CLOUDFLARE_ENV=staging`
-tells `@cloudflare/vite-plugin` to resolve `env.staging` from `wrangler.jsonc`
-and bake it into `dist/server/wrangler.json`. `wrangler deploy` then reads that
-redirected config and ignores `--env` entirely.
+`vite build --mode staging` evaluates `cloudflare.config.ts` with
+`ctx.mode === 'staging'` and writes the resolved Worker (name, bindings,
+triggers) to `.cloudflare/output/v0/`. `cf deploy --prebuilt` uploads
+whatever that last build produced, so the Worker name travels with the build:
 
-Two consequences:
+- `cf deploy --prebuilt` right after a staging build redeploys *staging*, never
+  production. Always go through the `deploy` scripts so the build and deploy
+  stay paired.
+- `cf deploy --mode staging` (without `--prebuilt`) fails: cf cannot pass a
+  mode to the detected `vite build`. Plain `cf deploy` builds production.
 
-- **Never run `wrangler deploy --env staging` by hand.** After a production
-  build it silently deploys *production* — the flag is ignored and there is no
-  warning. Staging always goes through `bun run deploy:staging`.
-- An exported `CLOUDFLARE_ENV=staging` left in your shell would otherwise turn a
-  production release into a staging deploy, so `bun run deploy` pins the
-  top-level environment with an empty `CLOUDFLARE_ENV=` on both the build and
-  the deploy.
-
-`bun run cf-typegen` regenerates `worker-configuration.d.ts` after changing
-bindings, vars, or `secrets.required` in `wrangler.jsonc`.
+`bun run cf-typegen` (`cf workers types`) regenerates the gitignored
+`.cloudflare/types/index.d.ts` from `cloudflare.config.ts`; `vite dev` and
+`bun run typecheck` also regenerate it.
 
 ### GitHub Actions
 
@@ -327,9 +336,9 @@ an active run; GitHub may replace an older pending run with a newer pending
 run. Superseded pull request runs are canceled. Jobs have time limits and do
 not retain build artifacts.
 
-Migrations explicitly read the source `wrangler.jsonc` and select the database
-environment. Deployments read the generated config from the preceding build,
-following [Cloudflare's build-time environment selection](https://developers.cloudflare.com/workers/vite-plugin/reference/cloudflare-environments/).
+Migrations go through `bun run db:migrate[:staging]`, which picks the
+database id from `config/d1.ts`. Deployments run `cf deploy --prebuilt` on the
+output of the preceding build step.
 Keep migrations backward-compatible with the currently deployed Worker: a
 failed deployment does not undo successful migrations. Review destructive
 schema changes separately before merging.

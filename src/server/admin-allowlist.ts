@@ -1,6 +1,6 @@
 /**
  * Admin access is an allowlist of Google account emails, configured with the
- * ADMIN_EMAILS var (comma-separated) in wrangler.jsonc.
+ * ADMIN_EMAILS var (comma-separated) in cloudflare.config.ts.
  */
 
 /**

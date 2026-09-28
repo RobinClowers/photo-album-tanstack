@@ -8,6 +8,8 @@ count.txt
 .nitro
 .tanstack
 .wrangler
+# cf build output and generated Worker types (`bun run cf-typegen`)
+.cloudflare
 .output
 .vinxi
 todos.json

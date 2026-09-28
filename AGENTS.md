@@ -24,6 +24,7 @@ bun run build        # Production build
 bun run serve        # Preview production build
 bun run preview      # Build and preview
 bun run deploy       # Build and deploy to Cloudflare Workers
+bun run deploy:staging
 ```
 
 ### Testing
@@ -41,7 +42,9 @@ depend on workerd bindings.
 ### Additional Commands
 
 ```bash
-bun run cf-typegen   # Generate Cloudflare Workers types
+bun run cf-typegen   # Generate Worker types (.cloudflare/types/index.d.ts)
+bun run db <local|staging|prod> "<sql>"   # SQL via cf d1 raw (see README)
+bun run db:local | db:migrate:staging | db:migrate   # D1 migrations
 ```
 
 ## Architecture Overview
@@ -417,26 +420,79 @@ describe('AlbumCard', () => {
 ### Cloudflare Workers
 
 - Use `bun run deploy` for production and `bun run deploy:staging` for staging.
-  The environment is selected **at build time** via `CLOUDFLARE_ENV`, which the
-  Cloudflare Vite plugin bakes into `dist/server/wrangler.json`; `wrangler
-  deploy` ignores `--env` against that config, so never run
-  `wrangler deploy --env staging` by hand.
-- Types generated with `bun run cf-typegen` (`wrangler types`)
+  The environment is selected **at build time** by Vite's `--mode`:
+  `cloudflare.config.ts` switches on `ctx.mode`, and the build writes the
+  resolved Worker to `.cloudflare/output/v0/`. `cf deploy --prebuilt` uploads
+  whatever the last build produced, so keep build and deploy paired through
+  the scripts.
+- Types are generated with `bun run cf-typegen` (`cf workers types`) into
+  `.cloudflare/types/index.d.ts` (gitignored; `tsconfig.json` points at it).
+  `vite dev` and `bun run typecheck` regenerate it; there is no committed
+  `worker-configuration.d.ts` any more.
+
+### cf CLI
+
+Wrangler has been replaced by the `cf` CLI (`cf` package, pinned beta) and
+`@cloudflare/vite-plugin@2` beta (pinned; its sha-tagged versions are the ones
+that understand `cloudflare.config.ts`, the 1.x plugin does not). There is no
+`wrangler.jsonc` and no `wrangler` dependency; do not add them back.
+
+- `cloudflare.config.ts` is the only Worker config: `defineConfig((ctx) =>
+  ...)` from `cf/config`, switching on `ctx.mode` (`'staging'`, else
+  production). Bindings go in `worker.env` via `bindings.*` (`text` for vars,
+  `secret()` for secrets, `d1`, `r2`, `queue`, `images`); crons and queue
+  consumers go in `worker.triggers` via `triggers.*`. Both modes share
+  `workerConfig()`, so add a binding once.
+- The config is loaded by Node's type stripping, not a bundler: relative
+  imports need the `.ts` extension (`./config/d1.ts`), and it cannot be loaded
+  under Bun's runtime (tools spawn it under Node). Values that scripts also
+  need live in plain modules such as `config/d1.ts`.
+- There is no `migrations_dir`: `cf d1 migrations apply <id> --dir drizzle`.
+  cf is wire-compatible with wrangler's `d1_migrations` table and recorded
+  names. All `cf d1` commands take a database **id**, never a name or binding;
+  use `bun run db` / `db:migrate*`, which read ids from `config/d1.ts`.
+- Local state: the Vite plugin now defaults to `.cloudflare/state` and `cf
+  --local` to `~/.config/cloudflare/state`. This repo keeps both on
+  `.wrangler/state` (`persistState` in `vite.config.ts`, `--persist-to
+  .wrangler/state` in scripts); pass `--persist-to .wrangler/state` on any
+  ad hoc `cf ... --local` command or it will see empty state. Locally, `cf d1
+  query` is not implemented (use `cf d1 raw`), and a multi-statement `--sql`
+  returns only the last statement's result (a `--batch` of one statement per
+  entry returns all of them).
+- `cf ... --local` (beta.5) often prints its result and then never exits. cf
+  re-executes itself, so the stuck process is a grandchild: killing the
+  direct child does nothing, and the orphan keeps inherited stdio open.
+  `scripts/d1.ts` runs local cf in its own process group and kills the group
+  once stdout is complete JSON. Wrap any other scripted `--local` call the
+  same way; interactively, Ctrl-C after the output.
+- `cf d1 raw` has no `--file`, and a whole dump in `--sql` exceeds the argv
+  limit and D1's 100 KB query limit. `bun run db --file` splits the file
+  (`scripts/sql.ts`) and sends ~90 KB `--batch @file.json` chunks.
+- `cf deploy --mode staging` fails (cf cannot pass a mode to `vite build`);
+  build with `vite build --mode staging`, then `cf deploy --prebuilt`.
+  `cf deploy --prebuilt --dry-run` shows the bindings a build would deploy.
+- Discover commands with `cf cli search "<task>"`, then `<command> --help`;
+  most commands are generated from the REST API and take `--dry-run`. Set
+  `CF_QUIET=1` for machine-readable output (`CF_SEND_TELEMETRY=false` in CI).
+  Remote commands need `cf auth login` locally or `CLOUDFLARE_API_TOKEN`
+  (plus `CLOUDFLARE_ACCOUNT_ID`) in CI.
+- `cf d1 export` is the raw polling API; for a SQL dump use `bunx wrangler@4
+  d1 export ...` ad hoc (see README).
 
 ### Configuration surfaces
 
 There are three, and they are not interchangeable:
 
-1. **Runtime `vars`** — non-secret values in `wrangler.jsonc`. Named
-   environments do not inherit them, so every entry must be mirrored under
-   `env.staging`. Read from the Worker `Env` binding.
+1. **Runtime vars** — non-secret `bindings.text(...)` entries in
+   `cloudflare.config.ts` (`workerConfig`, shared by both modes). Read from
+   the Worker `Env` binding.
 2. **Build-time `VITE_*`** — `.env`, `.env.staging`, ... loaded by Vite per
    `--mode` and inlined at build time. Read via `import.meta.env`; never put
    secrets here, they end up in the client bundle.
-3. **Secrets** — `.dev.vars` locally (gitignored), `wrangler secret put NAME
-   [--env staging]` per deployed environment, and declared in `wrangler.jsonc`
-   under `secrets.required` (top level *and* `env.staging`) so `wrangler types`
-   is deterministic.
+3. **Secrets** — `.dev.vars` locally (gitignored), `cf workers secrets
+   update NAME --worker <script> --type secret_text` per deployed Worker (it
+   prompts for the value), and declared as `bindings.secret()` in
+   `cloudflare.config.ts` so the generated `Env` type is deterministic.
 
 ### Build Process
 

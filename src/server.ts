@@ -12,7 +12,7 @@ import { sweepStaleItems } from '@/server/pipeline/sweeper'
 /**
  * Worker entry. TanStack Start's default entry only exports `fetch`; the
  * image pipeline also needs the Queues consumer and the cron sweeper, so this
- * file replaces it (wrangler.jsonc `main`). TanStack picks it up as the
+ * file replaces it (cloudflare.config.ts `entrypoint`). TanStack picks it up as the
  * server entry by its `src/server.ts` location.
  */
 const startFetch = createStartHandler(defaultStreamHandler)

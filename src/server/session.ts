@@ -21,7 +21,7 @@ function sessionPassword(): string {
   const secret = env.SESSION_SECRET
   if (!secret || secret.length < MIN_SECRET_LENGTH) {
     throw new Error(
-      `SESSION_SECRET must be set to at least ${MIN_SECRET_LENGTH} characters (see wrangler secrets)`,
+      `SESSION_SECRET must be set to at least ${MIN_SECRET_LENGTH} characters (see .dev.vars / cf workers secrets)`,
     )
   }
   return secret
